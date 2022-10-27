@@ -7,3 +7,5 @@ pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cu113.html
 
 python setup.py build_ext --inplace
 
+CC=gcc CXX=gcc python cc_setup.py build_ext --inplace
+
