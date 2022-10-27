@@ -9,7 +9,6 @@ import pandas as pd
 from src import config
 from src.checkpoints import CheckpointIO
 from src.utils.io import export_pointcloud
-from src.utils.visualize import visualize_data
 from src.utils.voxels import VoxelGrid
 
 
