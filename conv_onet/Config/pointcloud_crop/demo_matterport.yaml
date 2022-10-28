@@ -1,4 +1,4 @@
-inherit_from: configs/pointcloud_crop/room_grid64.yaml
+inherit_from: conv_onet/Config/pointcloud_crop/room_grid64.yaml
 data:
   input_type: pointcloud_crop
   classes: ['']
