@@ -106,59 +106,6 @@ def get_trainer(model, optimizer, cfg, device, **kwargs):
     return trainer
 
 
-def get_generator(model, cfg, device, **kwargs):
-    ''' Returns the generator object.
-
-    Args:
-        model (nn.Module): Occupancy Network model
-        cfg (dict): imported yaml config
-        device (device): pytorch device
-    '''
-    
-    if cfg['data']['input_type'] == 'pointcloud_crop':
-        # calculate the volume boundary
-        query_vol_metric = cfg['data']['padding'] + 1
-        unit_size = cfg['data']['unit_size']
-        recep_field = 2**(cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
-        if 'unet' in cfg['model']['encoder_kwargs']:
-            depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
-        elif 'unet3d' in cfg['model']['encoder_kwargs']:
-            depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
-        
-        vol_info = decide_total_volume_range(query_vol_metric, recep_field, unit_size, depth)
-        
-        grid_reso = cfg['data']['query_vol_size'] + recep_field - 1
-        grid_reso = update_reso(grid_reso, depth)
-        query_vol_size = cfg['data']['query_vol_size'] * unit_size
-        input_vol_size = grid_reso * unit_size
-        # only for the sliding window case
-        vol_bound = None
-        if cfg['generation']['sliding_window']:
-            vol_bound = {'query_crop_size': query_vol_size,
-                         'input_crop_size': input_vol_size,
-                         'fea_type': cfg['model']['encoder_kwargs']['plane_type'],
-                         'reso': grid_reso}
-
-    else: 
-        vol_bound = None
-        vol_info = None
-
-    generator = generation.Generator3D(
-        model,
-        device=device,
-        threshold=cfg['test']['threshold'],
-        resolution0=cfg['generation']['resolution_0'],
-        upsampling_steps=cfg['generation']['upsampling_steps'],
-        sample=cfg['generation']['use_sampling'],
-        refinement_step=cfg['generation']['refinement_step'],
-        simplify_nfaces=cfg['generation']['simplify_nfaces'],
-        input_type = cfg['data']['input_type'],
-        padding=cfg['data']['padding'],
-        vol_info = vol_info,
-        vol_bound = vol_bound,
-    )
-    return generator
-
 
 def get_data_fields(mode, cfg):
     ''' Returns the data fields.

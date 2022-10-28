@@ -10,52 +10,6 @@ method_dict = {
 
 
 # General config
-def load_config(path, default_path=None):
-    ''' Loads config file.
-
-    Args:  
-        path (str): path to config file
-        default_path (bool): whether to use default path
-    '''
-    # Load configuration from file itself
-    with open(path, 'r') as f:
-        cfg_special = yaml.load(f, Loader=yaml.FullLoader)
-
-    # Check if we should inherit from a config
-    inherit_from = cfg_special.get('inherit_from')
-
-    # If yes, load this config first as default
-    # If no, use the default_path
-    if inherit_from is not None:
-        cfg = load_config(inherit_from, default_path)
-    elif default_path is not None:
-        with open(default_path, 'r') as f:
-            cfg = yaml.load(f, Loader=yaml.FullLoader)
-    else:
-        cfg = dict()
-
-    # Include main configuration
-    update_recursive(cfg, cfg_special)
-
-    return cfg
-
-
-def update_recursive(dict1, dict2):
-    ''' Update two config dictionaries recursively.
-
-    Args:
-        dict1 (dict): first dictionary to be updated
-        dict2 (dict): second dictionary which entries should be used
-
-    '''
-    for k, v in dict2.items():
-        if k not in dict1:
-            dict1[k] = dict()
-        if isinstance(v, dict):
-            update_recursive(dict1[k], v)
-        else:
-            dict1[k] = v
-
 
 # Models
 def get_model(cfg, device=None, dataset=None):
@@ -150,54 +104,4 @@ def get_dataset(mode, cfg, return_idx=False):
     return dataset
 
 
-def get_inputs_field(mode, cfg):
-    ''' Returns the inputs fields.
 
-    Args:
-        mode (str): the mode which is used
-        cfg (dict): config dictionary
-    '''
-    input_type = cfg['data']['input_type']
-
-    if input_type is None:
-        inputs_field = None
-    elif input_type == 'pointcloud':
-        transform = transforms.Compose([
-            data.SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            data.PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-        inputs_field = data.PointCloudField(
-            cfg['data']['pointcloud_file'], transform,
-            multi_files= cfg['data']['multi_files']
-        )
-    elif input_type == 'partial_pointcloud':
-        transform = transforms.Compose([
-            data.SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            data.PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-        inputs_field = data.PartialPointCloudField(
-            cfg['data']['pointcloud_file'], transform,
-            multi_files= cfg['data']['multi_files']
-        )
-    elif input_type == 'pointcloud_crop':
-        transform = transforms.Compose([
-            data.SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            data.PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-    
-        inputs_field = data.PatchPointCloudField(
-            cfg['data']['pointcloud_file'], 
-            transform,
-            multi_files= cfg['data']['multi_files'],
-        )
-    
-    elif input_type == 'voxels':
-        inputs_field = data.VoxelsField(
-            cfg['data']['voxels_file']
-        )
-    elif input_type == 'idx':
-        inputs_field = data.IndexField()
-    else:
-        raise ValueError(
-            'Invalid input type (%s)' % input_type)
-    return inputs_field
