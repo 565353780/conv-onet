@@ -21,7 +21,7 @@ class Detector(object):
 
     def __init__(self):
         self.device = torch.device("cuda")
-        self.out_dir = "./output/"
+        out_dir = "./output/"
         self.generation_dir = self.out_dir + "generation/"
 
         self.cfg = CONFIG
@@ -32,8 +32,7 @@ class Detector(object):
             self.cfg, self.device, self.dataset)
         self.model.eval()
 
-        self.checkpoint_io = CheckpointIO(self.out_dir, model=self.model)
-        self.checkpoint_io.load(self.cfg['test']['model_file'])
+        self.checkpoint_io = CheckpointIO(out_dir, model=self.model)
 
         self.generator = Generator3D.fromConfig(self.model,
                                                 self.cfg,
@@ -44,8 +43,12 @@ class Detector(object):
                                                        num_workers=0,
                                                        shuffle=False)
 
-        self.time_dicts = []
+        self.loadModel(self.cfg['test']['model_file'])
         return
+
+    def loadModel(self, model_file_path):
+        self.checkpoint_io.load(model_file_path)
+        return True
 
     def detect(self, data):
         modelname = data['model']
