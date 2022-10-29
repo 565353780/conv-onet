@@ -61,7 +61,6 @@ generation:
   resolution_0: 32
   upsampling_steps: 2
   simplify_nfaces: null
-  copy_groundtruth: false
   copy_input: true
   latent_number: 4
   latent_H: 8
