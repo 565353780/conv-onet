@@ -53,31 +53,10 @@ class Detector(object):
         return
 
     def detect(self, data):
-        mesh_dir = self.generation_dir + 'meshes/'
         in_dir = self.generation_dir + 'input/'
+        mesh_dir = self.generation_dir + 'meshes/'
 
-        idx = data['idx'].item()
-
-        model_dict = self.dataset.get_model_dict(idx)
-        #  model_dict = {'model': str(idx), 'category': 'n/a'}
-
-        modelname = model_dict['model']
-        category_id = model_dict.get('category', 'n/a')
-
-        try:
-            category_name = self.dataset.metadata[category_id].get(
-                'name', 'n/a')
-        except AttributeError:
-            category_name = 'n/a'
-
-        if category_id != 'n/a':
-            mesh_dir = os.path.join(mesh_dir, str(category_id))
-            in_dir = os.path.join(in_dir, str(category_id))
-
-            folder_name = str(category_id)
-            if category_name != 'n/a':
-                folder_name = str(folder_name) + '_' + category_name.split(
-                    ',')[0]
+        modelname = data['model']
 
         os.makedirs(mesh_dir, exist_ok=True)
         os.makedirs(in_dir, exist_ok=True)
@@ -85,42 +64,26 @@ class Detector(object):
         # Generate outputs
         out_file_dict = {}
 
-        # Also copy ground truth
-        if self.cfg['generation']['copy_groundtruth']:
-            modelpath = os.path.join(self.dataset.dataset_folder, category_id,
-                                     modelname,
-                                     self.cfg['data']['watertight_file'])
-            out_file_dict['gt'] = modelpath
-
         if self.generate_mesh:
             if self.cfg['generation']['sliding_window']:
-                out = self.generator.generate_mesh_sliding(data)
+                mesh, stats_dict = self.generator.generate_mesh_sliding(data)
             else:
-                out = self.generator.generate_mesh(data)
-
-            try:
-                mesh, stats_dict = out
-            except TypeError:
-                mesh, stats_dict = out, {}
+                mesh, stats_dict = self.generator.generate_mesh(data)
 
             mesh_out_file = os.path.join(mesh_dir, '%s.off' % modelname)
             mesh.export(mesh_out_file)
             out_file_dict['mesh'] = mesh_out_file
 
         if self.cfg['generation']['copy_input']:
-            # Save inputs
             if self.input_type == 'voxels':
                 inputs_path = os.path.join(in_dir, '%s.off' % modelname)
                 inputs = data['inputs'].squeeze(0).cpu()
                 voxel_mesh = VoxelGrid(inputs).to_mesh()
                 voxel_mesh.export(inputs_path)
                 out_file_dict['in'] = inputs_path
-            elif self.input_type == 'pointcloud_crop':
-                inputs_path = os.path.join(in_dir, '%s.ply' % modelname)
-                inputs = data['inputs'].squeeze(0).cpu().numpy()
-                export_pointcloud(inputs, inputs_path, False)
-                out_file_dict['in'] = inputs_path
-            elif self.input_type == 'pointcloud' or 'partial_pointcloud':
+            elif self.input_type in [
+                    'pointcloud_crop', 'pointcloud', 'partial_pointcloud'
+            ]:
                 inputs_path = os.path.join(in_dir, '%s.ply' % modelname)
                 inputs = data['inputs'].squeeze(0).cpu().numpy()
                 export_pointcloud(inputs, inputs_path, False)
@@ -129,6 +92,10 @@ class Detector(object):
 
     def detectAll(self):
         for i, data in enumerate(self.test_loader):
+            idx = data['idx'].item()
+            model_dict = self.dataset.get_model_dict(idx)
+            data.update(model_dict)
+
             print("[INFO][Detector::detectAll]")
             print("\t start detect data " + str(i) + "...")
             self.detect(data)
