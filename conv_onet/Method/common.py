@@ -390,7 +390,6 @@ def decide_total_volume_range(query_vol_metric, recep_field, unit_size,
     # handle the case when resolution is too large
     if reso > 10000:
         reso = 1
-
     return input_vol, query_vol, reso
 
 
