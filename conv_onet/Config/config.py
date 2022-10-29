@@ -9,23 +9,17 @@ DATA = {
     'val_split': 'val',
     'test_split': 'test',
     'dim': 3,
-    'points_file': None,
-    'points_iou_file': None,
-    'multi_files': None,
     'points_subsample': 1024,
-    'points_unpackbits': True,
-    'model_file': 'model.off',
-    'watertight_file': 'model_watertight.off',
-    'n_views': 24,
     'pointcloud_file': 'pointcloud.npz',
-    'pointcloud_chamfer_file': 'pointcloud',
     'pointcloud_n': 200000,
-    'pointcloud_target_n': 1024,
     'pointcloud_noise': 0.0,
-    'voxels_file': None,
     'padding': 0.1,
     'unit_size': 0.02,  # define the size of a voxel, in meter
     'query_vol_size': 90,  # query crop in voxel
+    'points_iou_file': None,
+    'multi_files': None,
+    'points_unpackbits': True,
+    'pointcloud_chamfer_file': 'pointcloud',
 }
 
 MODEL = {
