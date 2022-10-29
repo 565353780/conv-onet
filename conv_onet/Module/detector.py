@@ -22,7 +22,7 @@ class Detector(object):
     def __init__(self):
         self.device = torch.device("cuda")
         out_dir = "./output/"
-        self.generation_dir = self.out_dir + "generation/"
+        self.generation_dir = out_dir + "generation/"
 
         self.cfg = CONFIG
 
