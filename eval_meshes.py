@@ -36,9 +36,9 @@ else:
 # Dataset
 points_field = data.PointsField(cfg['data']['points_iou_file'],
                                 unpackbits=cfg['data']['points_unpackbits'],
-                                multi_files=cfg['data']['multi_files'])
+                                multi_files=None)
 pointcloud_field = data.PointCloudField(cfg['data']['pointcloud_chamfer_file'],
-                                        multi_files=cfg['data']['multi_files'])
+                                        multi_files=None)
 fields = {
     'points_iou': points_field,
     'pointcloud_chamfer': pointcloud_field,
