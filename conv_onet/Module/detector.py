@@ -14,7 +14,6 @@ from collections import defaultdict
 
 from src.checkpoints import CheckpointIO
 from src.utils.io import export_pointcloud
-from src.utils.voxels import VoxelGrid
 
 from conv_onet.Data.field.index_field import IndexField
 from conv_onet.Data.field.partial_point_cloud_field import PartialPointCloudField
@@ -27,6 +26,8 @@ from conv_onet.Data.field.voxels_field import VoxelsField
 from conv_onet.Data.transform.pointcloud_noise import PointcloudNoise
 from conv_onet.Data.transform.subsample_pointcloud import SubsamplePointcloud
 from conv_onet.Data.transform.subsample_points import SubsamplePoints
+
+from conv_onet.Data.voxel_grid import VoxelGrid
 
 from conv_onet.Model.decoder.local_decoder import LocalDecoder
 from conv_onet.Model.decoder.patch_local_decoder import PatchLocalDecoder
@@ -60,22 +61,23 @@ decoder_dict = {
 }
 
 
-def load_config(path, default_path=None):
-    ''' Loads config file.
+def update_recursive(dict1, dict2):
+    for k, v in dict2.items():
+        if k not in dict1:
+            dict1[k] = dict()
+        if isinstance(v, dict):
+            update_recursive(dict1[k], v)
+        else:
+            dict1[k] = v
+    return True
 
-    Args:
-        path (str): path to config file
-        default_path (bool): whether to use default path
-    '''
-    # Load configuration from file itself
+
+def load_config(path, default_path=None):
     with open(path, 'r') as f:
         cfg_special = yaml.load(f, Loader=yaml.FullLoader)
 
-    # Check if we should inherit from a config
     inherit_from = cfg_special.get('inherit_from')
 
-    # If yes, load this config first as default
-    # If no, use the default_path
     if inherit_from is not None:
         cfg = load_config(inherit_from, default_path)
     elif default_path is not None:
@@ -84,36 +86,20 @@ def load_config(path, default_path=None):
     else:
         cfg = dict()
 
-    # Include main configuration
     update_recursive(cfg, cfg_special)
-
     return cfg
 
 
-def update_recursive(dict1, dict2):
-    ''' Update two config dictionaries recursively.
-
-    Args:
-        dict1 (dict): first dictionary to be updated
-        dict2 (dict): second dictionary which entries should be used
-
-    '''
-    for k, v in dict2.items():
-        if k not in dict1:
-            dict1[k] = dict()
-        if isinstance(v, dict):
-            update_recursive(dict1[k], v)
-        else:
-            dict1[k] = v
-
-
 def get_model(cfg, device=None, dataset=None, **kwargs):
-    decoder = cfg['model']['decoder']
     encoder = cfg['model']['encoder']
+    decoder = cfg['model']['decoder']
+
     dim = cfg['data']['dim']
     c_dim = cfg['model']['c_dim']
-    decoder_kwargs = cfg['model']['decoder_kwargs']
+
     encoder_kwargs = cfg['model']['encoder_kwargs']
+    decoder_kwargs = cfg['model']['decoder_kwargs']
+
     padding = cfg['data']['padding']
 
     # for pointcloud_crop
