@@ -14,20 +14,11 @@ from conv_onet.Method.common import decide_total_volume_range, update_reso
 
 
 def collate_remove_none(batch):
-    ''' Collater that puts each data field into a tensor with outer dimension
-        batch size.
-
-    Args:
-        batch: batch
-    '''
-
     batch = list(filter(lambda x: x is not None, batch))
     return data.dataloader.default_collate(batch)
 
 
 def worker_init_fn(worker_id):
-    ''' Worker init function to ensure true randomness.
-    '''
 
     def set_num_threads(nt):
         try:
@@ -50,8 +41,6 @@ def worker_init_fn(worker_id):
 
 
 class Shapes3dDataset(data.Dataset):
-    ''' 3D Shapes dataset class.
-    '''
 
     def __init__(self,
                  dataset_folder,
@@ -136,6 +125,10 @@ class Shapes3dDataset(data.Dataset):
             recep_field = 2**(
                 cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
                 2)
+
+            assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
+                'model']['encoder_kwargs']
+
             if 'unet' in cfg['model']['encoder_kwargs']:
                 depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
             elif 'unet3d' in cfg['model']['encoder_kwargs']:
