@@ -24,7 +24,6 @@ class Detector(object):
         self.device = torch.device("cuda")
         self.out_dir = "./output/"
         self.generation_dir = self.out_dir + "generation/"
-        self.generate_mesh = True
 
         self.cfg = CONFIG
 
@@ -63,30 +62,16 @@ class Detector(object):
         # Generate outputs
         out_file_dict = {}
 
-        if self.generate_mesh:
-            if self.cfg['generation']['sliding_window']:
-                mesh, stats_dict = self.generator.generate_mesh_sliding(data)
-            else:
-                mesh, stats_dict = self.generator.generate_mesh(data)
+        mesh, stats_dict = self.generator.generate_mesh_sliding(data)
 
-            mesh_out_file = os.path.join(mesh_dir, '%s.off' % modelname)
-            mesh.export(mesh_out_file)
-            out_file_dict['mesh'] = mesh_out_file
+        mesh_out_file = os.path.join(mesh_dir, '%s.off' % modelname)
+        mesh.export(mesh_out_file)
+        out_file_dict['mesh'] = mesh_out_file
 
-        if self.cfg['generation']['copy_input']:
-            if self.input_type == 'voxels':
-                inputs_path = os.path.join(in_dir, '%s.off' % modelname)
-                inputs = data['inputs'].squeeze(0).cpu()
-                voxel_mesh = VoxelGrid(inputs).to_mesh()
-                voxel_mesh.export(inputs_path)
-                out_file_dict['in'] = inputs_path
-            elif self.input_type in [
-                    'pointcloud_crop', 'pointcloud', 'partial_pointcloud'
-            ]:
-                inputs_path = os.path.join(in_dir, '%s.ply' % modelname)
-                inputs = data['inputs'].squeeze(0).cpu().numpy()
-                export_pointcloud(inputs, inputs_path, False)
-                out_file_dict['in'] = inputs_path
+        inputs_path = os.path.join(in_dir, '%s.ply' % modelname)
+        inputs = data['inputs'].squeeze(0).cpu().numpy()
+        export_pointcloud(inputs, inputs_path, False)
+        out_file_dict['in'] = inputs_path
         return True
 
     def detectAll(self):
