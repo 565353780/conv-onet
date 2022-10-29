@@ -15,6 +15,7 @@ from src.utils.libmise import MISE
 
 from conv_onet.Method.common import \
     make_3d_grid, normalize_coord, add_key, coord2index, decide_total_volume_range, update_reso
+from conv_onet.Method.patch import getPatchArray
 
 
 class Generator3D(object):
@@ -89,6 +90,10 @@ class Generator3D(object):
             recep_field = 2**(
                 cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
                 2)
+
+            assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
+                'model']['encoder_kwargs']
+
             if 'unet' in cfg['model']['encoder_kwargs']:
                 depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
             elif 'unet3d' in cfg['model']['encoder_kwargs']:
@@ -307,26 +312,27 @@ class Generator3D(object):
         '''
         query_crop_size = self.vol_bound['query_crop_size']
         input_crop_size = self.vol_bound['input_crop_size']
-        lb_query_list, ub_query_list = [], []
-        lb_input_list, ub_input_list = [], []
 
         lb = inputs.min(axis=1).values[0].cpu().numpy() - 0.01
         ub = inputs.max(axis=1).values[0].cpu().numpy() + 0.01
-        lb_query = np.mgrid[lb[0]:ub[0]:query_crop_size,\
-                    lb[1]:ub[1]:query_crop_size,\
-                    lb[2]:ub[2]:query_crop_size].reshape(3, -1).T
-        ub_query = lb_query + query_crop_size
+
+        # number of crops alongside x,y,z axis
+        self.vol_bound['axis_n_crop'] = np.ceil(
+            (ub - lb) / query_crop_size).astype(int)
+
+        lb_query, ub_query = getPatchArray(lb, ub, query_crop_size)
+
         center = (lb_query + ub_query) / 2
         lb_input = center - input_crop_size / 2
         ub_input = center + input_crop_size / 2
-        # number of crops alongside x,y, z axis
-        self.vol_bound['axis_n_crop'] = np.ceil(
-            (ub - lb) / query_crop_size).astype(int)
+
         # total number of crops
         num_crop = np.prod(self.vol_bound['axis_n_crop'])
+
         self.vol_bound['n_crop'] = num_crop
         self.vol_bound['input_vol'] = np.stack([lb_input, ub_input], axis=1)
         self.vol_bound['query_vol'] = np.stack([lb_query, ub_query], axis=1)
+        return True
 
     def encode_crop(self, inputs, device, vol_bound=None):
         ''' Encode a crop to feature volumes
