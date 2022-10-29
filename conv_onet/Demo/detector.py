@@ -6,5 +6,5 @@ from conv_onet.Module.detector import Detector
 
 def demo():
     detector = Detector()
-    detector.detect()
+    detector.detectAll()
     return True
