@@ -2,6 +2,8 @@
 
 ## Download
 
+### Dataset
+
 download demo data for test only
 
 ```bash
@@ -12,6 +14,12 @@ or download whole dataset
 
 ```bash
 bash ./scripts/download_data.sh
+```
+
+### Model
+
+```bash
+bash ./scripts/download_model.sh
 ```
 
 ## Install
