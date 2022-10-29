@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import yaml
 import torch
 
 from conv_onet.Data.voxel_grid import VoxelGrid
@@ -20,15 +21,13 @@ from conv_onet.Module.generator3d import Generator3D
 class Detector(object):
 
     def __init__(self):
-        #  self.test_config = "conv_onet/Config/pointcloud/demo_syn_room.yaml"
-        self.test_config = "conv_onet/Config/pointcloud_crop/demo_matterport.yaml"
         self.device = torch.device("cuda")
         self.out_dir = "./output/"
         self.generation_dir = self.out_dir + "generation/"
         self.generate_mesh = True
 
-        self.cfg = load_config(self.test_config,
-                               'conv_onet/Config/default.yaml')
+        with open("conv_onet/Config/default.yaml", 'r') as f:
+            self.cfg = yaml.load(f, Loader=yaml.FullLoader)
 
         self.input_type = self.cfg['data']['input_type']
 
