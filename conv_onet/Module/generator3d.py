@@ -104,14 +104,12 @@ class Generator3D(object):
         query_vol_size = cfg['data']['query_vol_size'] * unit_size
         input_vol_size = grid_reso * unit_size
         # only for the sliding window case
-        vol_bound = None
-        if cfg['generation']['sliding_window']:
-            vol_bound = {
-                'query_crop_size': query_vol_size,
-                'input_crop_size': input_vol_size,
-                'fea_type': cfg['model']['encoder_kwargs']['plane_type'],
-                'reso': grid_reso
-            }
+        vol_bound = {
+            'query_crop_size': query_vol_size,
+            'input_crop_size': input_vol_size,
+            'fea_type': cfg['model']['encoder_kwargs']['plane_type'],
+            'reso': grid_reso
+        }
 
         return cls(
             model,

@@ -135,15 +135,10 @@ class Shapes3dDataset(data.Dataset):
 
         self.depth = depth
         #! for sliding-window case, pass all points!
-        if self.cfg['generation']['sliding_window']:
-            # FIXME: set 100000 to 4 for debug
-            self.total_input_vol, self.total_query_vol, self.total_reso = \
-                decide_total_volume_range(
-                    4, recep_field, unit_size, depth)  # contain the whole scene
-        else:
-            self.total_input_vol, self.total_query_vol, self.total_reso = \
-                decide_total_volume_range(
-                    query_vol_metric, recep_field, unit_size, depth)
+        # FIXME: set 100000 to 4 for debug
+        self.total_input_vol, self.total_query_vol, self.total_reso = \
+            decide_total_volume_range(
+                4, recep_field, unit_size, depth)  # contain the whole scene
         return
 
     @classmethod
@@ -166,8 +161,9 @@ class Shapes3dDataset(data.Dataset):
             cfg['data']['pointcloud_noise'],
             cfg['data']['pointcloud_file'],
         )
-        if inputs_field is not None:
-            fields['inputs'] = inputs_field
+
+        assert inputs_field is not None
+        fields['inputs'] = inputs_field
 
         if return_idx:
             fields['idx'] = IndexField()

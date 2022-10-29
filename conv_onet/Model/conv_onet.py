@@ -74,23 +74,15 @@ class ConvolutionalOccupancyNetwork(nn.Module):
 
         # update the feature volume/plane resolution
         fea_type = cfg['model']['encoder_kwargs']['plane_type']
-        if (dataset.split
-                == 'train') or (cfg['generation']['sliding_window']):
-            recep_field = 2**(cfg['model']['encoder_kwargs']
-                              ['unet3d_kwargs']['num_levels'] + 2)
-            reso = cfg['data']['query_vol_size'] + recep_field - 1
-            if 'grid' in fea_type:
-                encoder_kwargs['grid_resolution'] = update_reso(
-                    reso, dataset.depth)
-            if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
-                encoder_kwargs['plane_resolution'] = update_reso(
-                    reso, dataset.depth)
-        # if dataset.split == 'val': #TODO run validation in room level during training
-        else:
-            if 'grid' in fea_type:
-                encoder_kwargs['grid_resolution'] = dataset.total_reso
-            if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
-                encoder_kwargs['plane_resolution'] = dataset.total_reso
+        recep_field = 2**(
+            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
+        reso = cfg['data']['query_vol_size'] + recep_field - 1
+        if 'grid' in fea_type:
+            encoder_kwargs['grid_resolution'] = update_reso(
+                reso, dataset.depth)
+        if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
+            encoder_kwargs['plane_resolution'] = update_reso(
+                reso, dataset.depth)
 
         decoder = decoder_dict[decoder](dim=dim,
                                         c_dim=c_dim,

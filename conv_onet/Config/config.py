@@ -69,7 +69,6 @@ TEST = {
 }
 
 GENERATION = {
-    'sliding_window': True,
     'batch_size': 100000,
     'refinement_step': 0,
     'vis_n_outputs': 2,
