@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import torch
 
 from conv_onet.Config.config import CONFIG
