@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import torch
+import numpy as np
 
 from conv_onet.Config.config import CONFIG
 
@@ -11,6 +12,7 @@ from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 
 from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset
 
+from conv_onet.Method.common import decide_total_volume_range, update_reso
 from conv_onet.Method.io import export_pointcloud
 from conv_onet.Method.path import createFileFolder
 
@@ -68,6 +70,17 @@ class Detector(object):
         return True
 
     def detectAll(self):
+        model_path = \
+            "/home/chli/chLi/conv-onet/demo_data/demo/Matterport3D_processed/17DRP5sb8fy/"
+        file_path = model_path + "pointcloud.npz"
+        points_dict = np.load(file_path)
+        p = points_dict['points']
+
+        data = {
+            'category': '',
+            'model': '17DRP5sb8fy',
+        }
+
         for i, data in enumerate(self.test_loader):
             idx = data['idx'].item()
             model_dict = self.dataset.get_model_dict(idx)
