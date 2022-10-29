@@ -138,9 +138,10 @@ class Shapes3dDataset(data.Dataset):
             self.depth = depth
             #! for sliding-window case, pass all points!
             if self.cfg['generation']['sliding_window']:
+                # FIXME: set 100000 to 4 for debug
                 self.total_input_vol, self.total_query_vol, self.total_reso = \
                     decide_total_volume_range(
-                        100000, recep_field, unit_size, depth)  # contain the whole scene
+                        4, recep_field, unit_size, depth)  # contain the whole scene
             else:
                 self.total_input_vol, self.total_query_vol, self.total_reso = \
                     decide_total_volume_range(
