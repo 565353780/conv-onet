@@ -1,5 +1,6 @@
 import numpy as np
-from .triangle_hash import TriangleHash as _TriangleHash
+
+from conv_onet.Lib.libmesh.triangle_hash import TriangleHash as _TriangleHash
 
 
 def check_mesh_contains(mesh, points, hash_resolution=512):
@@ -9,6 +10,7 @@ def check_mesh_contains(mesh, points, hash_resolution=512):
 
 
 class MeshIntersector:
+
     def __init__(self, mesh, resolution=512):
         triangles = mesh.vertices[mesh.faces].astype(np.float64)
         n_tri = triangles.shape[0]
@@ -37,8 +39,8 @@ class MeshIntersector:
 
         # cull points outside of the axis aligned bounding box
         # this avoids running ray tests unless points are close
-        inside_aabb = np.all(
-            (0 <= points) & (points <= self.resolution), axis=1)
+        inside_aabb = np.all((0 <= points) & (points <= self.resolution),
+                             axis=1)
         if not inside_aabb.any():
             return contains
 
@@ -47,7 +49,8 @@ class MeshIntersector:
         points = points[mask]
 
         # Compute intersection depth and check order
-        points_indices, tri_indices = self._tri_intersector2d.query(points[:, :2])
+        points_indices, tri_indices = self._tri_intersector2d.query(
+            points[:, :2])
 
         triangles_intersect = self._triangles[tri_indices]
         points_intersect = points[points_indices]
@@ -63,7 +66,7 @@ class MeshIntersector:
 
         nintersect0 = np.bincount(points_indices_0, minlength=points.shape[0])
         nintersect1 = np.bincount(points_indices_1, minlength=points.shape[0])
-        
+
         # Check if point contained in mesh
         contains1 = (np.mod(nintersect0, 2) == 1)
         contains2 = (np.mod(nintersect1, 2) == 1)
@@ -91,7 +94,7 @@ class MeshIntersector:
         abs_n_2 = np.abs(n_2)
 
         mask = (abs_n_2 != 0)
-    
+
         depth_intersect = np.full(points.shape[0], np.nan)
         depth_intersect[mask] = \
             t1_2[mask] * abs_n_2[mask] + alpha[mask] * s_n_2[mask]
@@ -111,6 +114,7 @@ class MeshIntersector:
 
 
 class TriangleIntersector2d:
+
     def __init__(self, triangles, resolution=128):
         self.triangles = triangles
         self.tri_hash = _TriangleHash(triangles, resolution)
@@ -133,7 +137,7 @@ class TriangleIntersector2d:
         y = points - triangles[:, 2]
 
         detA = A[:, 0, 0] * A[:, 1, 1] - A[:, 0, 1] * A[:, 1, 0]
-        
+
         mask = (np.abs(detA) != 0.)
         A = A[mask]
         y = y[mask]
@@ -146,9 +150,6 @@ class TriangleIntersector2d:
         v = (-A[:, 1, 0] * y[:, 0] + A[:, 0, 0] * y[:, 1]) * s_detA
 
         sum_uv = u + v
-        contains[mask] = (
-            (0 < u) & (u < abs_detA) & (0 < v) & (v < abs_detA)
-            & (0 < sum_uv) & (sum_uv < abs_detA)
-        )
+        contains[mask] = ((0 < u) & (u < abs_detA) & (0 < v) & (v < abs_detA)
+                          & (0 < sum_uv) & (sum_uv < abs_detA))
         return contains
-

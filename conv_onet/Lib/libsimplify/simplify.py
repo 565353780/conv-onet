@@ -1,7 +1,9 @@
-from .simplify_mesh import (
-    mesh_simplify
-)
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import trimesh
+
+from conv_onet.Lib.libsimplify.simplify_mesh import mesh_simplify
 
 
 def simplify_mesh(mesh, f_target=10000, agressiveness=7.):

@@ -1,6 +1,8 @@
 import numpy as np
-from mise import MISE
+
 import time
+
+from conv_onet.Lib.libnise.mise import MISE
 
 t0 = time.time()
 extractor = MISE(1, 2, 0.)

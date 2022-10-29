@@ -1,6 +1,6 @@
 import numpy as np
 
-from pykdtree.kdtree import KDTree
+from conv_onet.Lib.libkdtree.pykdtree.kdtree import KDTree
 
 
 data_pts_real = np.array([[  790535.062,  -369324.656,  6310963.5  ],
