@@ -12,7 +12,6 @@ from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 
 from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset
 
-from conv_onet.Method.common import decide_total_volume_range, update_reso
 from conv_onet.Method.io import export_pointcloud
 from conv_onet.Method.path import createFileFolder
 
@@ -69,18 +68,17 @@ class Detector(object):
         export_pointcloud(inputs, save_input_file_path, False)
         return True
 
-    def detectAll(self):
-        model_path = \
-            "/home/chli/chLi/conv-onet/demo_data/demo/Matterport3D_processed/17DRP5sb8fy/"
-        file_path = model_path + "pointcloud.npz"
-        points_dict = np.load(file_path)
-        p = points_dict['points']
-
+    def detectPointArray(self, point_array):
         data = {
-            'category': '',
-            'model': '17DRP5sb8fy',
+            'inputs':
+            torch.tensor(point_array.astype(np.float32)).reshape(1, -1, 3),
+            'pointcloud_crop':
+            True,
+            'model': 'test',
         }
+        return self.detect(data)
 
+    def detectAll(self):
         for i, data in enumerate(self.test_loader):
             idx = data['idx'].item()
             model_dict = self.dataset.get_model_dict(idx)
@@ -89,5 +87,4 @@ class Detector(object):
             print("[INFO][Detector::detectAll]")
             print("\t start detect data " + str(i) + "...")
             self.detect(data)
-            break
         return True
