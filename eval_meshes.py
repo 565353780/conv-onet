@@ -4,17 +4,18 @@ from tqdm import tqdm
 import pandas as pd
 import trimesh
 import torch
+
 from src import config, data
-from src.eval import MeshEvaluator
-from src.utils.io import load_pointcloud
 
+from conv_onet.Method.io import load_pointcloud
 
-parser = argparse.ArgumentParser(
-    description='Evaluate mesh algorithms.'
-)
+from conv_onet.Module.mesh_evaluator import MeshEvaluator
+
+parser = argparse.ArgumentParser(description='Evaluate mesh algorithms.')
 parser.add_argument('config', type=str, help='Path to config file.')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
-parser.add_argument('--eval_input', action='store_true',
+parser.add_argument('--eval_input',
+                    action='store_true',
                     help='Evaluate inputs instead.')
 
 args = parser.parse_args()
@@ -33,15 +34,11 @@ else:
     out_file_class = os.path.join(generation_dir, 'eval_input.csv')
 
 # Dataset
-points_field = data.PointsField(
-    cfg['data']['points_iou_file'],
-    unpackbits=cfg['data']['points_unpackbits'],
-    multi_files=cfg['data']['multi_files']
-)
-pointcloud_field = data.PointCloudField(
-    cfg['data']['pointcloud_chamfer_file'],
-    multi_files=cfg['data']['multi_files']
-)
+points_field = data.PointsField(cfg['data']['points_iou_file'],
+                                unpackbits=cfg['data']['points_unpackbits'],
+                                multi_files=cfg['data']['multi_files'])
+pointcloud_field = data.PointCloudField(cfg['data']['pointcloud_chamfer_file'],
+                                        multi_files=cfg['data']['multi_files'])
 fields = {
     'points_iou': points_field,
     'pointcloud_chamfer': pointcloud_field,
@@ -51,19 +48,20 @@ fields = {
 print('Test split: ', cfg['data']['test_split'])
 
 dataset_folder = cfg['data']['path']
-dataset = data.Shapes3dDataset(
-    dataset_folder, fields,
-    cfg['data']['test_split'],
-    categories=cfg['data']['classes'],
-    cfg=cfg
-    )
+dataset = data.Shapes3dDataset(dataset_folder,
+                               fields,
+                               cfg['data']['test_split'],
+                               categories=cfg['data']['classes'],
+                               cfg=cfg)
 
 # Evaluator
 evaluator = MeshEvaluator(n_points=100000)
 
 # Loader
-test_loader = torch.utils.data.DataLoader(
-    dataset, batch_size=1, num_workers=0, shuffle=False)
+test_loader = torch.utils.data.DataLoader(dataset,
+                                          batch_size=1,
+                                          num_workers=0,
+                                          shuffle=False)
 
 # Evaluate all classes
 eval_dicts = []
@@ -128,7 +126,12 @@ for it, data in enumerate(tqdm(test_loader)):
             try:
                 mesh = trimesh.load(mesh_file, process=False)
                 eval_dict_mesh = evaluator.eval_mesh(
-                    mesh, pointcloud_tgt, normals_tgt, points_tgt, occ_tgt, remove_wall=cfg['test']['remove_wall'])
+                    mesh,
+                    pointcloud_tgt,
+                    normals_tgt,
+                    points_tgt,
+                    occ_tgt,
+                    remove_wall=cfg['test']['remove_wall'])
                 for k, v in eval_dict_mesh.items():
                     eval_dict[k + ' (mesh)'] = v
             except Exception as e:
@@ -138,18 +141,16 @@ for it, data in enumerate(tqdm(test_loader)):
 
     # Evaluate point cloud
     if cfg['test']['eval_pointcloud']:
-        pointcloud_file = os.path.join(
-            pointcloud_dir, '%s.ply' % modelname)
+        pointcloud_file = os.path.join(pointcloud_dir, '%s.ply' % modelname)
 
         if os.path.exists(pointcloud_file):
             pointcloud = load_pointcloud(pointcloud_file)
-            eval_dict_pcl = evaluator.eval_pointcloud(
-                pointcloud, pointcloud_tgt)
+            eval_dict_pcl = evaluator.eval_pointcloud(pointcloud,
+                                                      pointcloud_tgt)
             for k, v in eval_dict_pcl.items():
                 eval_dict[k + ' (pcl)'] = v
         else:
-            print('Warning: pointcloud does not exist: %s'
-                    % pointcloud_file)
+            print('Warning: pointcloud does not exist: %s' % pointcloud_file)
 
 # Create pandas dataframe and save
 eval_df = pd.DataFrame(eval_dicts)
