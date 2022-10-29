@@ -17,7 +17,6 @@ DATA = {
     'unit_size': 0.02,  # define the size of a voxel, in meter
     'query_vol_size': 90,  # query crop in voxel
     'points_iou_file': None,
-    'multi_files': None,
     'points_unpackbits': True,
     'pointcloud_chamfer_file': 'pointcloud',
 }
@@ -41,7 +40,6 @@ MODEL = {
             'out_channels': 32,
         },
     },
-    'multi_gpu': False,
     'c_dim': 32,
 }
 
