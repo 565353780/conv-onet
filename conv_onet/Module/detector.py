@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import os
-import yaml
 import torch
+
+from conv_onet.Config.config import CONFIG
 
 from conv_onet.Data.voxel_grid import VoxelGrid
 from conv_onet.Data.checkpoint_io import CheckpointIO
@@ -12,7 +13,6 @@ from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 
 from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset
 
-from conv_onet.Method.config import load_config
 from conv_onet.Method.io import export_pointcloud
 
 from conv_onet.Module.generator3d import Generator3D
@@ -26,8 +26,7 @@ class Detector(object):
         self.generation_dir = self.out_dir + "generation/"
         self.generate_mesh = True
 
-        with open("conv_onet/Config/default.yaml", 'r') as f:
-            self.cfg = yaml.load(f, Loader=yaml.FullLoader)
+        self.cfg = CONFIG
 
         self.input_type = self.cfg['data']['input_type']
 
