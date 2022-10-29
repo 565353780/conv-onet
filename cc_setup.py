@@ -15,10 +15,10 @@ numpy_include_dir = numpy.get_include()
 
 # Extensions
 # pykdtree (kd tree)
-pykdtree = Extension('src.utils.libkdtree.pykdtree.kdtree',
+pykdtree = Extension('conv_onet.Lib.libkdtree.pykdtree.kdtree',
                      sources=[
-                         'src/utils/libkdtree/pykdtree/kdtree.c',
-                         'src/utils/libkdtree/pykdtree/_kdtree_core.c'
+                         'conv_onet/Lib/libkdtree/pykdtree/kdtree.c',
+                         'conv_onet/Lib/libkdtree/pykdtree/_kdtree_core.c'
                      ],
                      language='c',
                      extra_compile_args=['-std=c99', '-O3', '-fopenmp'],

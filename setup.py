@@ -12,11 +12,11 @@ numpy_include_dir = numpy.get_include()
 
 # Extensions
 # mcubes (marching cubes algorithm)
-mcubes_module = Extension('src.utils.libmcubes.mcubes',
+mcubes_module = Extension('conv_onet.Lib.libmcubes.mcubes',
                           sources=[
-                              'src/utils/libmcubes/mcubes.pyx',
-                              'src/utils/libmcubes/pywrapper.cpp',
-                              'src/utils/libmcubes/marchingcubes.cpp'
+                              'conv_onet/Lib/libmcubes/mcubes.pyx',
+                              'conv_onet/Lib/libmcubes/pywrapper.cpp',
+                              'conv_onet/Lib/libmcubes/marchingcubes.cpp'
                           ],
                           language='c++',
                           extra_compile_args=['-std=c++11'],
@@ -24,27 +24,27 @@ mcubes_module = Extension('src.utils.libmcubes.mcubes',
 
 # triangle hash (efficient mesh intersection)
 triangle_hash_module = Extension(
-    'src.utils.libmesh.triangle_hash',
-    sources=['src/utils/libmesh/triangle_hash.pyx'],
+    'conv_onet.Lib.libmesh.triangle_hash',
+    sources=['conv_onet/Lib/libmesh/triangle_hash.pyx'],
     libraries=['m'],  # Unix-like specific
     include_dirs=[numpy_include_dir])
 
 # mise (efficient mesh extraction)
 mise_module = Extension(
-    'src.utils.libmise.mise',
-    sources=['src/utils/libmise/mise.pyx'],
+    'conv_onet.Lib.libmise.mise',
+    sources=['conv_onet/Lib/libmise/mise.pyx'],
 )
 
 # simplify (efficient mesh simplification)
 simplify_mesh_module = Extension(
-    'src.utils.libsimplify.simplify_mesh',
-    sources=['src/utils/libsimplify/simplify_mesh.pyx'],
+    'conv_onet.Lib.libsimplify.simplify_mesh',
+    sources=['conv_onet/Lib/libsimplify/simplify_mesh.pyx'],
     include_dirs=[numpy_include_dir])
 
 # voxelization (efficient mesh voxelization)
 voxelize_module = Extension(
-    'src.utils.libvoxelize.voxelize',
-    sources=['src/utils/libvoxelize/voxelize.pyx'],
+    'conv_onet.Lib.libvoxelize.voxelize',
+    sources=['conv_onet/Lib/libvoxelize/voxelize.pyx'],
     libraries=['m']  # Unix-like specific
 )
 
