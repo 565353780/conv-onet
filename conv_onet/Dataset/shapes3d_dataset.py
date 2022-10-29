@@ -219,6 +219,16 @@ class Shapes3dDataset(data.Dataset):
             else:
                 data[field_name] = field_data
 
+        print(data.keys())
+        print(data['inputs'].shape)
+        print(data['inputs.normals'].shape)
+        print(data['inputs.mask'].shape)
+        print((data['inputs.mask'] == False).all())
+        print(data['inputs.ind']['grid'].shape)
+        print((data['inputs.ind']['grid'] == 0).all())
+
+        data['inputs.normals'] = []
+
         if self.transform is not None:
             data = self.transform(data)
 
