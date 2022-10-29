@@ -3,348 +3,24 @@
 
 import os
 import time
-import yaml
 import torch
 import shutil
 import pandas as pd
-import torch.nn as nn
 from tqdm import tqdm
-from torchvision import transforms
 from collections import defaultdict
 
-from conv_onet.Data.field.index_field import IndexField
-from conv_onet.Data.field.partial_point_cloud_field import PartialPointCloudField
-from conv_onet.Data.field.patch_point_cloud_field import PatchPointCloudField
-from conv_onet.Data.field.patch_points_field import PatchPointsField
-from conv_onet.Data.field.point_cloud_field import PointCloudField
-from conv_onet.Data.field.points_field import PointsField
-from conv_onet.Data.field.voxels_field import VoxelsField
-
-from conv_onet.Data.transform.pointcloud_noise import PointcloudNoise
-from conv_onet.Data.transform.subsample_pointcloud import SubsamplePointcloud
-from conv_onet.Data.transform.subsample_points import SubsamplePoints
+from conv_onet.Config.config import load_config
 
 from conv_onet.Data.voxel_grid import VoxelGrid
-
 from conv_onet.Data.checkpoint_io import CheckpointIO
-
-from conv_onet.Model.decoder.local_decoder import LocalDecoder
-from conv_onet.Model.decoder.patch_local_decoder import PatchLocalDecoder
-from conv_onet.Model.decoder.local_point_decoder import LocalPointDecoder
-
-from conv_onet.Model.encoder.pointnet.local_pool_pointnet import LocalPoolPointnet
-from conv_onet.Model.encoder.pointnet.patch_local_pool_pointnet import PatchLocalPoolPointnet
-from conv_onet.Model.encoder.pointnetpp.pointnet_plus_plus import PointNetPlusPlus
-from conv_onet.Model.encoder.voxel.local_voxel_encoder import LocalVoxelEncoder
 
 from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 
 from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset
 
-from conv_onet.Method.common import decide_total_volume_range, update_reso
 from conv_onet.Method.io import export_pointcloud
 
 from conv_onet.Module.generator3d import Generator3D
-
-encoder_dict = {
-    'pointnet_local_pool': LocalPoolPointnet,
-    'pointnet_crop_local_pool': PatchLocalPoolPointnet,
-    'pointnet_plus_plus': PointNetPlusPlus,
-    'voxel_simple_local': LocalVoxelEncoder,
-}
-
-# Decoder dictionary
-decoder_dict = {
-    'simple_local': LocalDecoder,
-    'simple_local_crop': PatchLocalDecoder,
-    'simple_local_point': LocalPointDecoder
-}
-
-
-def update_recursive(dict1, dict2):
-    for k, v in dict2.items():
-        if k not in dict1:
-            dict1[k] = dict()
-        if isinstance(v, dict):
-            update_recursive(dict1[k], v)
-        else:
-            dict1[k] = v
-    return True
-
-
-def load_config(path, default_path=None):
-    with open(path, 'r') as f:
-        cfg_special = yaml.load(f, Loader=yaml.FullLoader)
-
-    inherit_from = cfg_special.get('inherit_from')
-
-    if inherit_from is not None:
-        cfg = load_config(inherit_from, default_path)
-    elif default_path is not None:
-        with open(default_path, 'r') as f:
-            cfg = yaml.load(f, Loader=yaml.FullLoader)
-    else:
-        cfg = dict()
-
-    update_recursive(cfg, cfg_special)
-    return cfg
-
-
-def get_model(cfg, device=None, dataset=None, **kwargs):
-    encoder = cfg['model']['encoder']
-    decoder = cfg['model']['decoder']
-
-    dim = cfg['data']['dim']
-    c_dim = cfg['model']['c_dim']
-
-    encoder_kwargs = cfg['model']['encoder_kwargs']
-    decoder_kwargs = cfg['model']['decoder_kwargs']
-
-    padding = cfg['data']['padding']
-
-    # for pointcloud_crop
-    try:
-        encoder_kwargs['unit_size'] = cfg['data']['unit_size']
-        decoder_kwargs['unit_size'] = cfg['data']['unit_size']
-    except:
-        pass
-    # local positional encoding
-    if 'local_coord' in cfg['model'].keys():
-        encoder_kwargs['local_coord'] = cfg['model']['local_coord']
-        decoder_kwargs['local_coord'] = cfg['model']['local_coord']
-    if 'pos_encoding' in cfg['model']:
-        encoder_kwargs['pos_encoding'] = cfg['model']['pos_encoding']
-        decoder_kwargs['pos_encoding'] = cfg['model']['pos_encoding']
-
-    # update the feature volume/plane resolution
-    if cfg['data']['input_type'] == 'pointcloud_crop':
-        fea_type = cfg['model']['encoder_kwargs']['plane_type']
-        if (dataset.split == 'train') or (cfg['generation']['sliding_window']):
-            recep_field = 2**(
-                cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
-                2)
-            reso = cfg['data']['query_vol_size'] + recep_field - 1
-            if 'grid' in fea_type:
-                encoder_kwargs['grid_resolution'] = update_reso(
-                    reso, dataset.depth)
-            if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
-                encoder_kwargs['plane_resolution'] = update_reso(
-                    reso, dataset.depth)
-        # if dataset.split == 'val': #TODO run validation in room level during training
-        else:
-            if 'grid' in fea_type:
-                encoder_kwargs['grid_resolution'] = dataset.total_reso
-            if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
-                encoder_kwargs['plane_resolution'] = dataset.total_reso
-
-    decoder = decoder_dict[decoder](dim=dim,
-                                    c_dim=c_dim,
-                                    padding=padding,
-                                    **decoder_kwargs)
-
-    if encoder == 'idx':
-        encoder = nn.Embedding(len(dataset), c_dim)
-    elif encoder is not None:
-        encoder = encoder_dict[encoder](dim=dim,
-                                        c_dim=c_dim,
-                                        padding=padding,
-                                        **encoder_kwargs)
-    else:
-        encoder = None
-
-    model = ConvolutionalOccupancyNetwork(decoder, encoder, device=device)
-
-    return model
-
-
-def get_data_fields(mode, cfg):
-    ''' Returns the data fields.
-
-    Args:
-        mode (str): the mode which is used
-        cfg (dict): imported yaml config
-    '''
-    points_transform = SubsamplePoints(cfg['data']['points_subsample'])
-
-    input_type = cfg['data']['input_type']
-    fields = {}
-    if cfg['data']['points_file'] is not None:
-        if input_type != 'pointcloud_crop':
-            fields['points'] = PointsField(
-                cfg['data']['points_file'],
-                points_transform,
-                unpackbits=cfg['data']['points_unpackbits'],
-                multi_files=cfg['data']['multi_files'])
-        else:
-            fields['points'] = PatchPointsField(
-                cfg['data']['points_file'],
-                transform=points_transform,
-                unpackbits=cfg['data']['points_unpackbits'],
-                multi_files=cfg['data']['multi_files'])
-
-    if mode in ('val', 'test'):
-        points_iou_file = cfg['data']['points_iou_file']
-        voxels_file = cfg['data']['voxels_file']
-        if points_iou_file is not None:
-            if input_type == 'pointcloud_crop':
-                fields['points_iou'] = PatchPointsField(
-                    points_iou_file,
-                    unpackbits=cfg['data']['points_unpackbits'],
-                    multi_files=cfg['data']['multi_files'])
-            else:
-                fields['points_iou'] = PointsField(
-                    points_iou_file,
-                    unpackbits=cfg['data']['points_unpackbits'],
-                    multi_files=cfg['data']['multi_files'])
-        if voxels_file is not None:
-            fields['voxels'] = VoxelsField(voxels_file)
-
-    return fields
-
-
-def get_inputs_field(mode, cfg):
-    ''' Returns the inputs fields.
-
-    Args:
-        mode (str): the mode which is used
-        cfg (dict): config dictionary
-    '''
-    input_type = cfg['data']['input_type']
-
-    if input_type is None:
-        inputs_field = None
-    elif input_type == 'pointcloud':
-        transform = transforms.Compose([
-            SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-        inputs_field = PointCloudField(cfg['data']['pointcloud_file'],
-                                       transform,
-                                       multi_files=cfg['data']['multi_files'])
-    elif input_type == 'partial_pointcloud':
-        transform = transforms.Compose([
-            SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-        inputs_field = PartialPointCloudField(
-            cfg['data']['pointcloud_file'],
-            transform,
-            multi_files=cfg['data']['multi_files'])
-    elif input_type == 'pointcloud_crop':
-        transform = transforms.Compose([
-            SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-
-        inputs_field = PatchPointCloudField(
-            cfg['data']['pointcloud_file'],
-            transform,
-            multi_files=cfg['data']['multi_files'],
-        )
-
-    elif input_type == 'voxels':
-        inputs_field = VoxelsField(cfg['data']['voxels_file'])
-    elif input_type == 'idx':
-        inputs_field = IndexField()
-    else:
-        raise ValueError('Invalid input type (%s)' % input_type)
-    return inputs_field
-
-
-def get_dataset(mode, cfg, return_idx=False):
-    dataset_type = cfg['data']['dataset']
-    dataset_folder = cfg['data']['path']
-    categories = cfg['data']['classes']
-
-    # Get split
-    splits = {
-        'train': cfg['data']['train_split'],
-        'val': cfg['data']['val_split'],
-        'test': cfg['data']['test_split'],
-    }
-
-    split = splits[mode]
-
-    # Create dataset
-    if dataset_type == 'Shapes3D':
-        # Dataset fields
-        # Method specific fields (usually correspond to output)
-        fields = get_data_fields(mode, cfg)
-        # Input fields
-        inputs_field = get_inputs_field(mode, cfg)
-        if inputs_field is not None:
-            fields['inputs'] = inputs_field
-
-        if return_idx:
-            fields['idx'] = IndexField()
-
-        dataset = Shapes3dDataset(dataset_folder,
-                                  fields,
-                                  split=split,
-                                  categories=categories,
-                                  cfg=cfg)
-    else:
-        raise ValueError('Invalid dataset "%s"' % cfg['data']['dataset'])
-    return dataset
-
-
-def get_generator(model, cfg, device, **kwargs):
-    ''' Returns the generator object.
-
-    Args:
-        model (nn.Module): Occupancy Network model
-        cfg (dict): imported yaml config
-        device (device): pytorch device
-    '''
-
-    if cfg['data']['input_type'] == 'pointcloud_crop':
-        # calculate the volume boundary
-        query_vol_metric = cfg['data']['padding'] + 1
-        unit_size = cfg['data']['unit_size']
-        recep_field = 2**(
-            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
-        if 'unet' in cfg['model']['encoder_kwargs']:
-            depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
-        elif 'unet3d' in cfg['model']['encoder_kwargs']:
-            depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
-                'num_levels']
-
-        vol_info = decide_total_volume_range(query_vol_metric, recep_field,
-                                             unit_size, depth)
-
-        grid_reso = cfg['data']['query_vol_size'] + recep_field - 1
-        grid_reso = update_reso(grid_reso, depth)
-        query_vol_size = cfg['data']['query_vol_size'] * unit_size
-        input_vol_size = grid_reso * unit_size
-        # only for the sliding window case
-        vol_bound = None
-        if cfg['generation']['sliding_window']:
-            vol_bound = {
-                'query_crop_size': query_vol_size,
-                'input_crop_size': input_vol_size,
-                'fea_type': cfg['model']['encoder_kwargs']['plane_type'],
-                'reso': grid_reso
-            }
-
-    else:
-        vol_bound = None
-        vol_info = None
-
-    generator = Generator3D(
-        model,
-        device=device,
-        threshold=cfg['test']['threshold'],
-        resolution0=cfg['generation']['resolution_0'],
-        upsampling_steps=cfg['generation']['upsampling_steps'],
-        sample=cfg['generation']['use_sampling'],
-        refinement_step=cfg['generation']['refinement_step'],
-        simplify_nfaces=cfg['generation']['simplify_nfaces'],
-        input_type=cfg['data']['input_type'],
-        padding=cfg['data']['padding'],
-        vol_info=vol_info,
-        vol_bound=vol_bound,
-    )
-    return generator
 
 
 class Detector(object):
@@ -372,16 +48,16 @@ class Detector(object):
             vis_n_outputs = -1
 
         # Dataset
-        dataset = get_dataset('test', cfg, return_idx=True)
+        dataset = Shapes3dDataset.fromConfig('test', cfg, True)
 
         # Model
-        model = get_model(cfg, device=device, dataset=dataset)
+        model = ConvolutionalOccupancyNetwork.fromConfig(cfg, device, dataset)
 
         checkpoint_io = CheckpointIO(out_dir, model=model)
         checkpoint_io.load(cfg['test']['model_file'])
 
         # Generator
-        generator = get_generator(model, cfg, device=device)
+        generator = Generator3D.fromConfig(model, cfg, device=device)
 
         # Determine what to generate
         generate_mesh = cfg['generation']['generate_mesh']
