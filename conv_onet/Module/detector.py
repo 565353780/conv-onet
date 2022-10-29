@@ -6,7 +6,6 @@ import torch
 
 from conv_onet.Config.config import CONFIG
 
-from conv_onet.Data.voxel_grid import VoxelGrid
 from conv_onet.Data.checkpoint_io import CheckpointIO
 
 from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
