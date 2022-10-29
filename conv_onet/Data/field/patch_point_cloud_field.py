@@ -3,9 +3,10 @@
 
 import os
 import numpy as np
-from src.common import coord2index
 
 from conv_onet.Data.field.field import Field
+
+from conv_onet.Method.common import coord2index
 
 
 class PatchPointCloudField(Field):

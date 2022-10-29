@@ -3,9 +3,10 @@
 
 import os
 import numpy as np
-from src.common import normalize_coord
 
 from conv_onet.Data.field.field import Field
+
+from conv_onet.Method.common import normalize_coord
 
 
 class PatchPointsField(Field):
