@@ -8,7 +8,7 @@ import numpy as np
 from torch.utils import data
 
 from conv_onet.Data.field.index_field import IndexField
-from conv_onet.Data.field.fields import get_data_fields, get_inputs_field
+from conv_onet.Data.field.fields import get_inputs_field
 
 from conv_onet.Method.common import decide_total_volume_range, update_reso
 
@@ -161,7 +161,7 @@ class Shapes3dDataset(data.Dataset):
 
         split = splits[mode]
 
-        fields = get_data_fields(mode, cfg)
+        fields = {}
         inputs_field = get_inputs_field(mode, cfg)
         if inputs_field is not None:
             fields['inputs'] = inputs_field
