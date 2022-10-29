@@ -13,6 +13,7 @@ from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset
 
 from conv_onet.Method.io import export_pointcloud
+from conv_onet.Method.path import createFileFolder
 
 from conv_onet.Module.generator3d import Generator3D
 
@@ -50,22 +51,20 @@ class Detector(object):
         return
 
     def detect(self, data):
-        in_dir = self.generation_dir + 'input/'
-        mesh_dir = self.generation_dir + 'meshes/'
-
         modelname = data['model']
 
-        os.makedirs(mesh_dir, exist_ok=True)
-        os.makedirs(in_dir, exist_ok=True)
+        save_input_file_path = self.generation_dir + 'input/' + modelname + '.ply'
+        save_mesh_file_path = self.generation_dir + 'meshes/' + modelname + '.off'
+
+        createFileFolder(save_input_file_path)
+        createFileFolder(save_mesh_file_path)
 
         mesh, stats_dict = self.generator.generate_mesh_sliding(data)
 
-        mesh_out_file = mesh_dir + modelname + '.off'
-        mesh.export(mesh_out_file)
+        mesh.export(save_mesh_file_path)
 
-        inputs_path = in_dir + modelname + '.ply'
         inputs = data['inputs'].squeeze(0).cpu().numpy()
-        export_pointcloud(inputs, inputs_path, False)
+        export_pointcloud(inputs, save_input_file_path, False)
         return True
 
     def detectAll(self):
