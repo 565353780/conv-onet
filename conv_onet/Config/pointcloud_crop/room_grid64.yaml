@@ -49,7 +49,6 @@ test:
   eval_pointcloud: false
   model_file: model_best.pt
 generation:
-  generation_dir: generation
   vis_n_outputs: 2
   sliding_window: True
   resolution_0: 32

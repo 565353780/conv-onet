@@ -1,4 +1,3 @@
-method: conv_onet
 data:
   dataset: Shapes3D
   path: data/ShapeNet
@@ -36,7 +35,6 @@ model:
   multi_gpu: false
   c_dim: 512
 training:
-  out_dir:  out/default
   batch_size: 64
   print_every: 200
   visualize_every: 1000
@@ -58,8 +56,6 @@ generation:
   batch_size: 100000
   refinement_step: 0
   vis_n_outputs: 30
-  generate_mesh: true
-  generate_pointcloud: true
   generation_dir: generation
   use_sampling: false
   resolution_0: 32
