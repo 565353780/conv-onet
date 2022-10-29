@@ -15,6 +15,7 @@ def export_pointcloud(vertices, out_file, as_text=True):
     plyel = PlyElement.describe(vertices, 'vertex')
     plydata = PlyData([plyel], text=as_text)
     plydata.write(out_file)
+    return True
 
 
 def load_pointcloud(in_file):
