@@ -8,7 +8,7 @@ import numpy as np
 from torch.utils import data
 
 from conv_onet.Data.field.index_field import IndexField
-from conv_onet.Data.field.fields import get_inputs_field
+from conv_onet.Method.field import get_inputs_field
 
 from conv_onet.Method.common import decide_total_volume_range, update_reso
 
@@ -122,8 +122,7 @@ class Shapes3dDataset(data.Dataset):
         query_vol_metric = self.cfg['data']['padding'] + 1
         unit_size = self.cfg['data']['unit_size']
         recep_field = 2**(
-            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
-            2)
+            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
 
         assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
             'model']['encoder_kwargs']
@@ -162,7 +161,11 @@ class Shapes3dDataset(data.Dataset):
         split = splits[mode]
 
         fields = {}
-        inputs_field = get_inputs_field(mode, cfg)
+        inputs_field = get_inputs_field(
+            cfg['data']['pointcloud_n'],
+            cfg['data']['pointcloud_noise'],
+            cfg['data']['pointcloud_file'],
+        )
         if inputs_field is not None:
             fields['inputs'] = inputs_field
 
@@ -236,12 +239,7 @@ class Shapes3dDataset(data.Dataset):
             self.cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
             + 2)
 
-        if self.cfg['data']['multi_files'] is None:
-            file_path = os.path.join(model_path, field_name)
-        else:
-            num = np.random.randint(self.cfg['data']['multi_files'])
-            file_path = os.path.join(model_path, field_name,
-                                     '%s_%02d.npz' % (field_name, num))
+        file_path = os.path.join(model_path, field_name)
 
         points_dict = np.load(file_path)
         p = points_dict['points']
