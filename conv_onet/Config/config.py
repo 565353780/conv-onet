@@ -3,7 +3,7 @@
 
 DATA = {
     'dataset': 'Shapes3D',
-    'path': 'data/demo/Matterport3D_processed',
+    'path': '/home/chli/chLi/conv-onet/demo_data/demo/Matterport3D_processed',
     'classes': [''],
     'train_split': 'train',
     'val_split': 'val',
@@ -56,16 +56,11 @@ TRAINING = {
 }
 
 TEST = {
-    'threshold':
-    0.2,
-    'eval_mesh':
-    True,
-    'eval_pointcloud':
-    False,
-    'remove_wall':
-    False,
-    'model_file':
-    'https://s3.eu-central-1.amazonaws.com/avg-projects/convolutional_occupancy_networks/models/pointcloud_crop/room_grid64.pt'
+    'threshold': 0.2,
+    'eval_mesh': True,
+    'eval_pointcloud': False,
+    'remove_wall': False,
+    'model_file': './room_grid64.pt'
 }
 
 GENERATION = {
