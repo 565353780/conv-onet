@@ -4,9 +4,7 @@
 import os
 import time
 import torch
-import shutil
 import datetime
-import argparse
 import matplotlib
 import numpy as np
 import torch.optim as optim
@@ -15,88 +13,58 @@ from tensorboardX import SummaryWriter
 
 matplotlib.use('Agg')
 
+from conv_onet.Config.config import CONFIG
+
 from conv_onet.Data.checkpoint_io import CheckpointIO
 
+from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
+
+from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset, collate_remove_none, worker_init_fn
+
+from conv_onet.Module.generator3d import Generator3D
 from conv_onet.Module.trainer import Trainer
 
 
 def demo():
-    trainer = Trainer()
-
-    # Arguments
-    parser = argparse.ArgumentParser(
-        description='Train a 3D reconstruction model.')
-    parser.add_argument('config', type=str, help='Path to config file.')
-    parser.add_argument('--no-cuda',
-                        action='store_true',
-                        help='Do not use cuda.')
-    parser.add_argument(
-        '--exit-after',
-        type=int,
-        default=-1,
-        help='Checkpoint and exit after specified number of seconds'
-        'with exit code 2.')
-
-    args = parser.parse_args()
-    cfg = config.load_config(args.config, 'configs/default.yaml')
-    is_cuda = (torch.cuda.is_available() and not args.no_cuda)
-    device = torch.device("cuda" if is_cuda else "cpu")
-    # Set t0
-    t0 = time.time()
-
-    # Shorthands
+    cfg = CONFIG
+    device = torch.device("cuda")
     out_dir = cfg['training']['out_dir']
     batch_size = cfg['training']['batch_size']
     backup_every = cfg['training']['backup_every']
-    vis_n_outputs = cfg['generation']['vis_n_outputs']
-    exit_after = args.exit_after
 
     model_selection_metric = cfg['training']['model_selection_metric']
     if cfg['training']['model_selection_mode'] == 'maximize':
         model_selection_sign = 1
-    elif cfg['training']['model_selection_mode'] == 'minimize':
-        model_selection_sign = -1
     else:
-        raise ValueError('model_selection_mode must be '
-                         'either maximize or minimize.')
+        model_selection_sign = -1
 
-    # Output directory
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
 
-    shutil.copyfile(args.config, os.path.join(out_dir, 'config.yaml'))
-
-    # Dataset
-    train_dataset = config.get_dataset('train', cfg)
-    val_dataset = config.get_dataset('val', cfg, return_idx=True)
+    train_dataset = Shapes3dDataset.fromConfig('train', cfg)
+    val_dataset = Shapes3dDataset.fromConfig('val', cfg, return_idx=True)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=batch_size,
         num_workers=cfg['training']['n_workers'],
         shuffle=True,
-        collate_fn=data.collate_remove_none,
-        worker_init_fn=data.worker_init_fn)
+        collate_fn=collate_remove_none,
+        worker_init_fn=worker_init_fn)
 
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
         batch_size=1,
         num_workers=cfg['training']['n_workers_val'],
         shuffle=False,
-        collate_fn=data.collate_remove_none,
-        worker_init_fn=data.worker_init_fn)
+        collate_fn=collate_remove_none,
+        worker_init_fn=worker_init_fn)
 
-    # For visualizations
-    vis_loader = torch.utils.data.DataLoader(
-        val_dataset,
-        batch_size=1,
-        shuffle=False,
-        collate_fn=data.collate_remove_none,
-        worker_init_fn=data.worker_init_fn)
-    model_counter = defaultdict(int)
-    data_vis_list = []
+    vis_loader = torch.utils.data.DataLoader(val_dataset,
+                                             batch_size=1,
+                                             shuffle=False,
+                                             collate_fn=collate_remove_none,
+                                             worker_init_fn=worker_init_fn)
 
-    # Build a data dictionary for visualization
     iterator = iter(vis_loader)
     for i in range(len(vis_loader)):
         data_vis = next(iterator)
@@ -108,26 +76,15 @@ def demo():
         if category_name == 'n/a':
             category_name = category_id
 
-        c_it = model_counter[category_id]
-        if c_it < vis_n_outputs:
-            data_vis_list.append({
-                'category': category_name,
-                'it': c_it,
-                'data': data_vis
-            })
+    model = ConvolutionalOccupancyNetwork.fromConfig(cfg, device,
+                                                     train_dataset)
 
-        model_counter[category_id] += 1
-
-    # Model
-    model = config.get_model(cfg, device=device, dataset=train_dataset)
-
-    # Generator
-    generator = config.get_generator(model, cfg, device=device)
+    generator = Generator3D.fromConfig(model, cfg, device)
 
     # Intialize training
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     # optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
-    trainer = config.get_trainer(model, optimizer, cfg, device=device)
+    trainer = Trainer.fromConfig(model, optimizer, cfg, device=device)
 
     checkpoint_io = CheckpointIO(out_dir, model=model, optimizer=optimizer)
     try:
@@ -165,19 +122,16 @@ def demo():
             loss = trainer.train_step(batch)
             logger.add_scalar('train/loss', loss, it)
 
-            # Print output
             if print_every > 0 and (it % print_every) == 0:
                 t = datetime.datetime.now()
-                print(
-                    '[Epoch %02d] it=%03d, loss=%.4f, time: %.2fs, %02d:%02d' %
-                    (epoch_it, it, loss, time.time() - t0, t.hour, t.minute))
+                print('[Epoch %02d] it=%03d, loss=%.4f, %02d:%02d' %
+                      (epoch_it, it, loss, t.hour, t.minute))
 
-            # Visualize output
             if visualize_every > 0 and (it % visualize_every) == 0:
                 print('Visualizing')
-                for data_vis in data_vis_list:
-                    mesh, stats_dict = generator.generate_mesh_sliding(
-                        data_vis['data'])
+                # FIXME: finish it later
+                if False:
+                    mesh, stats_dict = generator.generate_mesh_sliding('data')
 
                     mesh.export(
                         os.path.join(
@@ -185,7 +139,6 @@ def demo():
                             '{}_{}_{}.off'.format(it, data_vis['category'],
                                                   data_vis['it'])))
 
-            # Save checkpoint
             if (checkpoint_every > 0 and (it % checkpoint_every) == 0):
                 print('Saving checkpoint')
                 checkpoint_io.save('model.pt',
@@ -193,14 +146,13 @@ def demo():
                                    it=it,
                                    loss_val_best=metric_val_best)
 
-            # Backup if necessary
             if (backup_every > 0 and (it % backup_every) == 0):
                 print('Backup checkpoint')
                 checkpoint_io.save('model_%d.pt' % it,
                                    epoch_it=epoch_it,
                                    it=it,
                                    loss_val_best=metric_val_best)
-            # Run validation
+
             if validate_every > 0 and (it % validate_every) == 0:
                 eval_dict = trainer.evaluate(val_loader)
                 metric_val = eval_dict[model_selection_metric]
@@ -217,13 +169,4 @@ def demo():
                                        epoch_it=epoch_it,
                                        it=it,
                                        loss_val_best=metric_val_best)
-
-            # Exit if necessary
-            if exit_after > 0 and (time.time() - t0) >= exit_after:
-                print('Time limit reached. Exiting.')
-                checkpoint_io.save('model.pt',
-                                   epoch_it=epoch_it,
-                                   it=it,
-                                   loss_val_best=metric_val_best)
-                exit(3)
     return True
