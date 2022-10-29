@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import os
-import time
 import torch
 import datetime
 import matplotlib
 import numpy as np
 import torch.optim as optim
-from collections import defaultdict
 from tensorboardX import SummaryWriter
 
 matplotlib.use('Agg')
