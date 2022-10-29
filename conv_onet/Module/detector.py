@@ -59,19 +59,14 @@ class Detector(object):
         os.makedirs(mesh_dir, exist_ok=True)
         os.makedirs(in_dir, exist_ok=True)
 
-        # Generate outputs
-        out_file_dict = {}
-
         mesh, stats_dict = self.generator.generate_mesh_sliding(data)
 
-        mesh_out_file = os.path.join(mesh_dir, '%s.off' % modelname)
+        mesh_out_file = mesh_dir + modelname + '.off'
         mesh.export(mesh_out_file)
-        out_file_dict['mesh'] = mesh_out_file
 
-        inputs_path = os.path.join(in_dir, '%s.ply' % modelname)
+        inputs_path = in_dir + modelname + '.ply'
         inputs = data['inputs'].squeeze(0).cpu().numpy()
         export_pointcloud(inputs, inputs_path, False)
-        out_file_dict['in'] = inputs_path
         return True
 
     def detectAll(self):
