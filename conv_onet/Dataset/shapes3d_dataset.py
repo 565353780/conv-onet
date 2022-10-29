@@ -119,26 +119,18 @@ class Shapes3dDataset(data.Dataset):
         # precompute
         self.split = split
         # proper resolution for feature plane/volume of the ENTIRE scene
-        query_vol_metric = self.cfg['data']['padding'] + 1
         unit_size = self.cfg['data']['unit_size']
         recep_field = 2**(
-            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
+            self.cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
 
-        assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
-            'model']['encoder_kwargs']
+        self.depth = self.cfg['model']['encoder_kwargs']['unet3d_kwargs'][
+            'num_levels']
 
-        if 'unet' in cfg['model']['encoder_kwargs']:
-            depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
-        elif 'unet3d' in cfg['model']['encoder_kwargs']:
-            depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
-                'num_levels']
-
-        self.depth = depth
         #! for sliding-window case, pass all points!
         # FIXME: set 100000 to 4 for debug
         self.total_input_vol, self.total_query_vol, self.total_reso = \
             decide_total_volume_range(
-                4, recep_field, unit_size, depth)  # contain the whole scene
+                4, recep_field, unit_size, self.depth)  # contain the whole scene
         return
 
     @classmethod
@@ -187,7 +179,6 @@ class Shapes3dDataset(data.Dataset):
         '''
         category = self.models[idx]['category']
         model = self.models[idx]['model']
-        c_idx = self.metadata[category]['idx']
 
         model_path = os.path.join(self.dataset_folder, category, model)
         data = {}
