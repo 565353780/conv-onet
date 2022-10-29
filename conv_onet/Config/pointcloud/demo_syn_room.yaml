@@ -1,4 +1,4 @@
-inherit_from: configs/pointcloud/room_combine.yaml
+inherit_from: conv_onet/Config/pointcloud/room_combine.yaml
 data:
   classes: ['']
   path: data/demo/synthetic_room_dataset
