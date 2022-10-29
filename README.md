@@ -1,4 +1,18 @@
-# Conv ONet Manage
+# Conv ONet
+
+## Download
+
+download demo data for test only
+
+```bash
+bash ./scripts/download_demo_data.sh
+```
+
+or download whole dataset
+
+```bash
+bash ./scripts/download_data.sh
+```
 
 ## Install
 
