@@ -12,9 +12,6 @@ from tqdm import tqdm
 from torchvision import transforms
 from collections import defaultdict
 
-from src.checkpoints import CheckpointIO
-from src.utils.io import export_pointcloud
-
 from conv_onet.Data.field.index_field import IndexField
 from conv_onet.Data.field.partial_point_cloud_field import PartialPointCloudField
 from conv_onet.Data.field.patch_point_cloud_field import PatchPointCloudField
@@ -28,6 +25,8 @@ from conv_onet.Data.transform.subsample_pointcloud import SubsamplePointcloud
 from conv_onet.Data.transform.subsample_points import SubsamplePoints
 
 from conv_onet.Data.voxel_grid import VoxelGrid
+
+from conv_onet.Data.checkpoint_io import CheckpointIO
 
 from conv_onet.Model.decoder.local_decoder import LocalDecoder
 from conv_onet.Model.decoder.patch_local_decoder import PatchLocalDecoder
@@ -43,6 +42,7 @@ from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset
 
 from conv_onet.Method.common import decide_total_volume_range, update_reso
+from conv_onet.Method.io import export_pointcloud
 
 from conv_onet.Module.generator3d import Generator3D
 
