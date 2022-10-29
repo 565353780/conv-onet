@@ -3,8 +3,9 @@
 
 import trimesh
 import numpy as np
-from src.utils.libkdtree import KDTree
-from src.utils.libmesh import check_mesh_contains
+
+from conv_onet.Lib.libkdtree.pykdtree.kdtree import KDTree
+from conv_onet.Lib.libmesh.inside_mesh import check_mesh_contains
 
 from conv_onet.Config.eval import EMPTY_PCL_DICT, EMPTY_PCL_DICT_NORMALS
 

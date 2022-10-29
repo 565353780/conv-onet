@@ -1,30 +1,30 @@
-from os import listdir, makedirs, getcwd
-from os.path import join, exists, isdir, exists
-import json
+from os import makedirs
+from os.path import join, exists, exists
 import trimesh
-import numpy as np 
+import numpy as np
 from copy import deepcopy
-import shutil
-import zipfile
 from tqdm import tqdm
-from src.utils.io import export_pointcloud
+
+from conv_onet.Method.io import export_pointcloud
+
 
 def create_dir(dir_in):
     if not exists(dir_in):
         makedirs(dir_in)
 
+
 base_path = 'data/Matterport3D/v1/scans'
 scene_name = 'JmbYfDe2QKZ'
 out_path = 'data/Matterport3D_processed'
 scene_path = join(base_path, scene_name, 'region_segmentations')
-regions = [join(scene_path, 'region'+str(m)+'.ply')) 
+regions = [join(scene_path, 'region'+str(m)+'.ply'))
            for m in range(100) if exists(join(scene_path, 'region'+str(m)+'.ply'))]
 outfile = join(out_path, scene_name)
 create_dir(outfile)
 
 n_pointcloud_points = 500000
 dtype = np.float16
-cut_mesh =True
+cut_mesh= True
 save_part_mesh = False
 
 mat_permute = np.array([
@@ -35,7 +35,7 @@ mat_permute = np.array([
 for idx, r_path in tqdm(enumerate(regions)):
     mesh = trimesh.load(r_path)
     z_max = max(mesh.vertices[:, 2])
-    z_range = max(mesh.vertices[:, 2]) - min(mesh.vertices[:, 2])
+    z_range = max(mesh.vertices[: , 2]) - min(mesh.vertices[: , 2])
     x_min = min(mesh.vertices[:, 0])
     y_min = min(mesh.vertices[:, 1])
     # For better visualization, cut the ceilings and parts of walls
@@ -46,9 +46,9 @@ for idx, r_path in tqdm(enumerate(regions)):
         mesh = deepcopy(mesh)
         mesh.apply_transform(mat_permute)
         if save_part_mesh == True:
-            out_file = join(outfile, 'mesh_fused%d.ply'%idx)
+            out_file = join(outfile, 'mesh_fused%d.ply' % idx)
             mesh.export(out_file)
-    
+
     if idx == 0:
         faces = mesh.faces
         vertices = mesh.vertices

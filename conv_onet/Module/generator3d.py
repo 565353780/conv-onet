@@ -9,9 +9,9 @@ import torch.optim as optim
 from tqdm import trange
 from torch import autograd
 
-from src.utils import libmcubes
-from src.utils.libsimplify import simplify_mesh
-from src.utils.libmise import MISE
+from conv_onet.Lib.libmcubes.mcubes import marching_cubes
+from conv_onet.Lib.libmise.mise import MISE
+from conv_onet.Lib.libsimplify.simplify import simplify_mesh
 
 from conv_onet.Method.common import \
     make_3d_grid, normalize_coord, add_key, coord2index, decide_total_volume_range, update_reso
@@ -467,8 +467,7 @@ class Generator3D(object):
         # Make sure that mesh is watertight
         t0 = time.time()
         occ_hat_padded = np.pad(occ_hat, 1, 'constant', constant_values=-1e6)
-        vertices, triangles = libmcubes.marching_cubes(occ_hat_padded,
-                                                       threshold)
+        vertices, triangles = marching_cubes(occ_hat_padded, threshold)
         stats_dict['time (marching cubes)'] = time.time() - t0
         # Strange behaviour in libmcubes: vertices are shifted by 0.5
         vertices -= 0.5

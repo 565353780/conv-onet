@@ -4,8 +4,8 @@
 import numpy as np
 from scipy import ndimage
 
-from src.utils.libvoxelize.voxelize import voxelize_mesh_
-from src.utils.libmesh import check_mesh_contains
+from conv_onet.Lib.libmesh import check_mesh_contains
+from conv_onet.Lib.libvoxelize.voxelize import voxelize_mesh_
 
 from conv_onet.Method.common import make_3d_grid
 
