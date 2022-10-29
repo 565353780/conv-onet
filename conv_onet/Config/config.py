@@ -71,7 +71,6 @@ TEST = {
 GENERATION = {
     'batch_size': 100000,
     'refinement_step': 0,
-    'vis_n_outputs': 2,
     'use_sampling': False,
     'resolution_0': 128,
     'upsampling_steps': 0,
