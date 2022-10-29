@@ -1,9 +1,9 @@
-/out
-/data
+# compiled
 build
-.vscode
-.pytest_cache
-.cache
+conv_onet/Lib/libmcubes/mcubes.cpp
+conv_onet/Lib/libsimplify/simplify_mesh.cpp
+conv_onet/Lib/libsimplify/build
+
 *.pyc
 *.pyd
 *.pt
@@ -21,6 +21,7 @@ build
 *.off
 *.npz
 *.txt
-/src/utils/libmcubes/mcubes.cpp
-/src/utils/libsimplify/simplify_mesh.cpp
-/src/utils/libsimplify/build
+
+# output
+out
+
