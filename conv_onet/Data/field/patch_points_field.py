@@ -18,19 +18,12 @@ class PatchPointsField(Field):
     Args:
         file_name (str): file name
         transform (list): list of transformations which will be applied to the points tensor
-        multi_files (callable): number of files
-
     '''
 
-    def __init__(self,
-                 file_name,
-                 transform=None,
-                 unpackbits=False,
-                 multi_files=None):
+    def __init__(self, file_name, transform=None, unpackbits=False):
         self.file_name = file_name
         self.transform = transform
         self.unpackbits = unpackbits
-        self.multi_files = multi_files
 
     def load(self, model_path, idx, vol):
         ''' Loads the data point.
@@ -40,12 +33,7 @@ class PatchPointsField(Field):
             idx (int): ID of data point
             vol (dict): precomputed volume info
         '''
-        if self.multi_files is None:
-            file_path = os.path.join(model_path, self.file_name)
-        else:
-            num = np.random.randint(self.multi_files)
-            file_path = os.path.join(model_path, self.file_name,
-                                     '%s_%02d.npz' % (self.file_name, num))
+        file_path = os.path.join(model_path, self.file_name)
 
         points_dict = np.load(file_path)
         points = points_dict['points']

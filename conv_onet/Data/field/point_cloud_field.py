@@ -16,13 +16,11 @@ class PointCloudField(Field):
     Args:
         file_name (str): file name
         transform (list): list of transformations applied to data points
-        multi_files (callable): number of files
     '''
 
-    def __init__(self, file_name, transform=None, multi_files=None):
+    def __init__(self, file_name, transform=None):
         self.file_name = file_name
         self.transform = transform
-        self.multi_files = multi_files
 
     def load(self, model_path, idx, category):
         ''' Loads the data point.
@@ -32,12 +30,7 @@ class PointCloudField(Field):
             idx (int): ID of data point
             category (int): index of category
         '''
-        if self.multi_files is None:
-            file_path = os.path.join(model_path, self.file_name)
-        else:
-            num = np.random.randint(self.multi_files)
-            file_path = os.path.join(model_path, self.file_name,
-                                     '%s_%02d.npz' % (self.file_name, num))
+        file_path = os.path.join(model_path, self.file_name)
 
         pointcloud_dict = np.load(file_path)
 

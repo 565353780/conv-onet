@@ -16,18 +16,12 @@ class PartialPointCloudField(Field):
     Args:
         file_name (str): file name
         transform (list): list of transformations applied to data points
-        multi_files (callable): number of files
         part_ratio (float): max ratio for the remaining part
     '''
 
-    def __init__(self,
-                 file_name,
-                 transform=None,
-                 multi_files=None,
-                 part_ratio=0.7):
+    def __init__(self, file_name, transform=None, part_ratio=0.7):
         self.file_name = file_name
         self.transform = transform
-        self.multi_files = multi_files
         self.part_ratio = part_ratio
 
     def load(self, model_path, idx, category):
@@ -38,12 +32,7 @@ class PartialPointCloudField(Field):
             idx (int): ID of data point
             category (int): index of category
         '''
-        if self.multi_files is None:
-            file_path = os.path.join(model_path, self.file_name)
-        else:
-            num = np.random.randint(self.multi_files)
-            file_path = os.path.join(model_path, self.file_name,
-                                     '%s_%02d.npz' % (self.file_name, num))
+        file_path = os.path.join(model_path, self.file_name)
 
         pointcloud_dict = np.load(file_path)
 
