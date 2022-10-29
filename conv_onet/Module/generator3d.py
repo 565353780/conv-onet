@@ -131,12 +131,11 @@ class Generator3D(object):
             vol_bound=vol_bound,
         )
 
-    def generate_mesh(self, data, return_stats=True):
+    def generate_mesh(self, data):
         ''' Generates the output mesh.
 
         Args:
             data (tensor): data tensor
-            return_stats (bool): whether stats should be returned
         '''
         self.model.eval()
         device = self.device
@@ -163,11 +162,7 @@ class Generator3D(object):
         stats_dict['time (encode inputs)'] = time.time() - t0
 
         mesh = self.generate_from_latent(c, stats_dict=stats_dict, **kwargs)
-
-        if return_stats:
-            return mesh, stats_dict
-        else:
-            return mesh
+        return mesh, stats_dict
 
     def generate_from_latent(self, c=None, stats_dict={}, **kwargs):
         ''' Generates mesh from latent.
@@ -216,13 +211,12 @@ class Generator3D(object):
         mesh = self.extract_mesh(value_grid, c, stats_dict=stats_dict)
         return mesh
 
-    def generate_mesh_sliding(self, data, return_stats=True):
+    def generate_mesh_sliding(self, data):
         ''' Generates the output mesh in sliding-window manner.
             Adapt for real-world scale.
 
         Args:
             data (tensor): data tensor
-            return_stats (bool): whether stats should be returned
         '''
         self.model.eval()
         device = self.device
@@ -303,10 +297,7 @@ class Generator3D(object):
         value_grid = occ_values_x
         mesh = self.extract_mesh(value_grid, c, stats_dict=stats_dict)
 
-        if return_stats:
-            return mesh, stats_dict
-        else:
-            return mesh
+        return mesh, stats_dict
 
     def get_crop_bound(self, inputs):
         ''' Divide a scene into crops, get boundary for each crop
