@@ -20,6 +20,7 @@ from conv_onet.Module.generator3d import Generator3D
 class Detector(object):
 
     def __init__(self):
+        #  self.test_config = "conv_onet/Config/pointcloud/demo_syn_room.yaml"
         self.test_config = "conv_onet/Config/pointcloud_crop/demo_matterport.yaml"
         self.device = torch.device("cuda")
         self.out_dir = "./output/"
