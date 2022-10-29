@@ -34,11 +34,8 @@ else:
     out_file_class = os.path.join(generation_dir, 'eval_input.csv')
 
 # Dataset
-points_field = data.PointsField(cfg['data']['points_iou_file'],
-                                unpackbits=cfg['data']['points_unpackbits'],
-                                multi_files=None)
-pointcloud_field = data.PointCloudField(cfg['data']['pointcloud_chamfer_file'],
-                                        multi_files=None)
+points_field = data.PointsField(None, unpackbits=True)
+pointcloud_field = data.PointCloudField('pointcloud')
 fields = {
     'points_iou': points_field,
     'pointcloud_chamfer': pointcloud_field,
