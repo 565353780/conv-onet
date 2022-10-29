@@ -7,6 +7,9 @@ import torch
 import numpy as np
 from torch.utils import data
 
+from conv_onet.Data.field.index_field import IndexField
+from conv_onet.Data.field.fields import get_data_fields, get_inputs_field
+
 from conv_onet.Method.common import decide_total_volume_range, update_reso
 
 
@@ -143,10 +146,40 @@ class Shapes3dDataset(data.Dataset):
             #! for sliding-window case, pass all points!
             if self.cfg['generation']['sliding_window']:
                 self.total_input_vol, self.total_query_vol, self.total_reso = \
-                    decide_total_volume_range(100000, recep_field, unit_size, depth) # contain the whole scene
+                    decide_total_volume_range(
+                        100000, recep_field, unit_size, depth)  # contain the whole scene
             else:
                 self.total_input_vol, self.total_query_vol, self.total_reso = \
-                    decide_total_volume_range(query_vol_metric, recep_field, unit_size, depth)
+                    decide_total_volume_range(
+                        query_vol_metric, recep_field, unit_size, depth)
+
+    @classmethod
+    def fromConfig(cls, mode, cfg, return_idx=False):
+        dataset_folder = cfg['data']['path']
+        categories = cfg['data']['classes']
+
+        # Get split
+        splits = {
+            'train': cfg['data']['train_split'],
+            'val': cfg['data']['val_split'],
+            'test': cfg['data']['test_split'],
+        }
+
+        split = splits[mode]
+
+        fields = get_data_fields(mode, cfg)
+        inputs_field = get_inputs_field(mode, cfg)
+        if inputs_field is not None:
+            fields['inputs'] = inputs_field
+
+        if return_idx:
+            fields['idx'] = IndexField()
+
+        return cls(dataset_folder,
+                   fields,
+                   split=split,
+                   categories=categories,
+                   cfg=cfg)
 
     def __len__(self):
         ''' Returns the length of the dataset.
