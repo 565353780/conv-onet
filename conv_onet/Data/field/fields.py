@@ -25,36 +25,22 @@ def get_data_fields(mode, cfg):
     '''
     points_transform = SubsamplePoints(cfg['data']['points_subsample'])
 
-    input_type = cfg['data']['input_type']
     fields = {}
     if cfg['data']['points_file'] is not None:
-        if input_type != 'pointcloud_crop':
-            fields['points'] = PointsField(
-                cfg['data']['points_file'],
-                points_transform,
-                unpackbits=cfg['data']['points_unpackbits'],
-                multi_files=cfg['data']['multi_files'])
-        else:
-            fields['points'] = PatchPointsField(
-                cfg['data']['points_file'],
-                transform=points_transform,
-                unpackbits=cfg['data']['points_unpackbits'],
-                multi_files=cfg['data']['multi_files'])
+        fields['points'] = PatchPointsField(
+            cfg['data']['points_file'],
+            transform=points_transform,
+            unpackbits=cfg['data']['points_unpackbits'],
+            multi_files=cfg['data']['multi_files'])
 
     if mode in ('val', 'test'):
         points_iou_file = cfg['data']['points_iou_file']
         voxels_file = cfg['data']['voxels_file']
         if points_iou_file is not None:
-            if input_type == 'pointcloud_crop':
-                fields['points_iou'] = PatchPointsField(
-                    points_iou_file,
-                    unpackbits=cfg['data']['points_unpackbits'],
-                    multi_files=cfg['data']['multi_files'])
-            else:
-                fields['points_iou'] = PointsField(
-                    points_iou_file,
-                    unpackbits=cfg['data']['points_unpackbits'],
-                    multi_files=cfg['data']['multi_files'])
+            fields['points_iou'] = PatchPointsField(
+                points_iou_file,
+                unpackbits=cfg['data']['points_unpackbits'],
+                multi_files=cfg['data']['multi_files'])
         if voxels_file is not None:
             fields['voxels'] = VoxelsField(voxels_file)
     return fields
@@ -67,43 +53,14 @@ def get_inputs_field(mode, cfg):
         mode (str): the mode which is used
         cfg (dict): config dictionary
     '''
-    input_type = cfg['data']['input_type']
+    transform = transforms.Compose([
+        SubsamplePointcloud(cfg['data']['pointcloud_n']),
+        PointcloudNoise(cfg['data']['pointcloud_noise'])
+    ])
 
-    if input_type is None:
-        inputs_field = None
-    elif input_type == 'pointcloud':
-        transform = transforms.Compose([
-            SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-        inputs_field = PointCloudField(cfg['data']['pointcloud_file'],
-                                       transform,
-                                       multi_files=cfg['data']['multi_files'])
-    elif input_type == 'partial_pointcloud':
-        transform = transforms.Compose([
-            SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-        inputs_field = PartialPointCloudField(
-            cfg['data']['pointcloud_file'],
-            transform,
-            multi_files=cfg['data']['multi_files'])
-    elif input_type == 'pointcloud_crop':
-        transform = transforms.Compose([
-            SubsamplePointcloud(cfg['data']['pointcloud_n']),
-            PointcloudNoise(cfg['data']['pointcloud_noise'])
-        ])
-
-        inputs_field = PatchPointCloudField(
-            cfg['data']['pointcloud_file'],
-            transform,
-            multi_files=cfg['data']['multi_files'],
-        )
-
-    elif input_type == 'voxels':
-        inputs_field = VoxelsField(cfg['data']['voxels_file'])
-    elif input_type == 'idx':
-        inputs_field = IndexField()
-    else:
-        raise ValueError('Invalid input type (%s)' % input_type)
+    inputs_field = PatchPointCloudField(
+        cfg['data']['pointcloud_file'],
+        transform,
+        multi_files=cfg['data']['multi_files'],
+    )
     return inputs_field

@@ -34,7 +34,6 @@ class Generator3D(object):
         with_normals (bool): whether normals should be estimated
         padding (float): how much padding should be used for MISE
         sample (bool): whether z should be sampled
-        input_type (str): type of input
         vol_info (dict): volume infomation
         vol_bound (dict): volume boundary
         simplify_nfaces (int): number of faces the mesh should be simplified to
@@ -51,7 +50,6 @@ class Generator3D(object):
                  with_normals=False,
                  padding=0.1,
                  sample=False,
-                 input_type=None,
                  vol_info=None,
                  vol_bound=None,
                  simplify_nfaces=None):
@@ -63,7 +61,6 @@ class Generator3D(object):
         self.resolution0 = resolution0
         self.upsampling_steps = upsampling_steps
         self.with_normals = with_normals
-        self.input_type = input_type
         self.padding = padding
         self.sample = sample
         self.simplify_nfaces = simplify_nfaces
@@ -83,43 +80,38 @@ class Generator3D(object):
             device (device): pytorch device
         '''
 
-        if cfg['data']['input_type'] == 'pointcloud_crop':
-            # calculate the volume boundary
-            query_vol_metric = cfg['data']['padding'] + 1
-            unit_size = cfg['data']['unit_size']
-            recep_field = 2**(
-                cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
-                2)
+        # calculate the volume boundary
+        query_vol_metric = cfg['data']['padding'] + 1
+        unit_size = cfg['data']['unit_size']
+        recep_field = 2**(
+            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
+            2)
 
-            assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
-                'model']['encoder_kwargs']
+        assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
+            'model']['encoder_kwargs']
 
-            if 'unet' in cfg['model']['encoder_kwargs']:
-                depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
-            elif 'unet3d' in cfg['model']['encoder_kwargs']:
-                depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
-                    'num_levels']
+        if 'unet' in cfg['model']['encoder_kwargs']:
+            depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
+        elif 'unet3d' in cfg['model']['encoder_kwargs']:
+            depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
+                'num_levels']
 
-            vol_info = decide_total_volume_range(query_vol_metric, recep_field,
-                                                 unit_size, depth)
+        vol_info = decide_total_volume_range(query_vol_metric, recep_field,
+                                             unit_size, depth)
 
-            grid_reso = cfg['data']['query_vol_size'] + recep_field - 1
-            grid_reso = update_reso(grid_reso, depth)
-            query_vol_size = cfg['data']['query_vol_size'] * unit_size
-            input_vol_size = grid_reso * unit_size
-            # only for the sliding window case
-            vol_bound = None
-            if cfg['generation']['sliding_window']:
-                vol_bound = {
-                    'query_crop_size': query_vol_size,
-                    'input_crop_size': input_vol_size,
-                    'fea_type': cfg['model']['encoder_kwargs']['plane_type'],
-                    'reso': grid_reso
-                }
-
-        else:
-            vol_bound = None
-            vol_info = None
+        grid_reso = cfg['data']['query_vol_size'] + recep_field - 1
+        grid_reso = update_reso(grid_reso, depth)
+        query_vol_size = cfg['data']['query_vol_size'] * unit_size
+        input_vol_size = grid_reso * unit_size
+        # only for the sliding window case
+        vol_bound = None
+        if cfg['generation']['sliding_window']:
+            vol_bound = {
+                'query_crop_size': query_vol_size,
+                'input_crop_size': input_vol_size,
+                'fea_type': cfg['model']['encoder_kwargs']['plane_type'],
+                'reso': grid_reso
+            }
 
         return cls(
             model,
@@ -130,7 +122,6 @@ class Generator3D(object):
             sample=cfg['generation']['use_sampling'],
             refinement_step=cfg['generation']['refinement_step'],
             simplify_nfaces=cfg['generation']['simplify_nfaces'],
-            input_type=cfg['data']['input_type'],
             padding=cfg['data']['padding'],
             vol_info=vol_info,
             vol_bound=vol_bound,
@@ -422,31 +413,25 @@ class Generator3D(object):
         p_split = torch.split(p, self.points_batch_size)
         occ_hats = []
         for pi in p_split:
-            if self.input_type == 'pointcloud_crop':
-                if self.vol_bound is not None:  # sliding-window manner
-                    occ_hat = self.predict_crop_occ(pi,
-                                                    c,
-                                                    vol_bound=vol_bound,
-                                                    **kwargs)
-                    occ_hats.append(occ_hat)
-                else:  # entire scene
-                    pi_in = pi.unsqueeze(0).to(self.device)
-                    pi_in = {'p': pi_in}
-                    p_n = {}
-                    for key in c.keys():
-                        # normalized to the range of [0, 1]
-                        p_n[key] = normalize_coord(pi.clone(),
-                                                   self.input_vol,
-                                                   plane=key).unsqueeze(0).to(
-                                                       self.device)
-                    pi_in['p_n'] = p_n
-                    with torch.no_grad():
-                        occ_hat = self.model.decode(pi_in, c, **kwargs).logits
-                    occ_hats.append(occ_hat.squeeze(0).detach().cpu())
-            else:
-                pi = pi.unsqueeze(0).to(self.device)
+            if self.vol_bound is not None:  # sliding-window manner
+                occ_hat = self.predict_crop_occ(pi,
+                                                c,
+                                                vol_bound=vol_bound,
+                                                **kwargs)
+                occ_hats.append(occ_hat)
+            else:  # entire scene
+                pi_in = pi.unsqueeze(0).to(self.device)
+                pi_in = {'p': pi_in}
+                p_n = {}
+                for key in c.keys():
+                    # normalized to the range of [0, 1]
+                    p_n[key] = normalize_coord(pi.clone(),
+                                               self.input_vol,
+                                               plane=key).unsqueeze(0).to(
+                                                   self.device)
+                pi_in['p_n'] = p_n
                 with torch.no_grad():
-                    occ_hat = self.model.decode(pi, c, **kwargs).logits
+                    occ_hat = self.model.decode(pi_in, c, **kwargs).logits
                 occ_hats.append(occ_hat.squeeze(0).detach().cpu())
 
         occ_hat = torch.cat(occ_hats, dim=0)

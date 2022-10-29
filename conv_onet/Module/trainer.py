@@ -18,7 +18,6 @@ class Trainer(object):
         model (nn.Module): Occupancy Network model
         optimizer (optimizer): pytorch optimizer object
         device (device): pytorch device
-        input_type (str): input type
         vis_dir (str): visualization directory
         threshold (float): threshold value
         eval_sample (bool): whether to evaluate samples
@@ -29,14 +28,12 @@ class Trainer(object):
                  model,
                  optimizer,
                  device=None,
-                 input_type='pointcloud',
                  vis_dir=None,
                  threshold=0.5,
                  eval_sample=False):
         self.model = model
         self.optimizer = optimizer
         self.device = device
-        self.input_type = input_type
         self.vis_dir = vis_dir
         self.threshold = threshold
         self.eval_sample = eval_sample
@@ -57,12 +54,10 @@ class Trainer(object):
         threshold = cfg['test']['threshold']
         out_dir = cfg['training']['out_dir']
         vis_dir = os.path.join(out_dir, 'vis')
-        input_type = cfg['data']['input_type']
 
         return cls(model,
                    optimizer,
                    device=device,
-                   input_type=input_type,
                    vis_dir=vis_dir,
                    threshold=threshold,
                    eval_sample=cfg['training']['eval_sample'])

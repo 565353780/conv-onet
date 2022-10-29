@@ -4,9 +4,7 @@
 DATA = {
     'dataset': 'Shapes3D',
     'path': 'data/demo/Matterport3D_processed',
-    'watertight_path': 'data/watertight',
     'classes': [''],
-    'input_type': 'pointcloud_crop',
     'train_split': 'train',
     'val_split': 'val',
     'test_split': 'test',

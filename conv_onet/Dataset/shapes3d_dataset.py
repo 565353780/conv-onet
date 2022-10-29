@@ -117,35 +117,35 @@ class Shapes3dDataset(data.Dataset):
                 self.models += [{'category': c, 'model': m} for m in models_c]
 
         # precompute
-        if self.cfg['data']['input_type'] == 'pointcloud_crop':
-            self.split = split
-            # proper resolution for feature plane/volume of the ENTIRE scene
-            query_vol_metric = self.cfg['data']['padding'] + 1
-            unit_size = self.cfg['data']['unit_size']
-            recep_field = 2**(
-                cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
-                2)
+        self.split = split
+        # proper resolution for feature plane/volume of the ENTIRE scene
+        query_vol_metric = self.cfg['data']['padding'] + 1
+        unit_size = self.cfg['data']['unit_size']
+        recep_field = 2**(
+            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
+            2)
 
-            assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
-                'model']['encoder_kwargs']
+        assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
+            'model']['encoder_kwargs']
 
-            if 'unet' in cfg['model']['encoder_kwargs']:
-                depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
-            elif 'unet3d' in cfg['model']['encoder_kwargs']:
-                depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
-                    'num_levels']
+        if 'unet' in cfg['model']['encoder_kwargs']:
+            depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
+        elif 'unet3d' in cfg['model']['encoder_kwargs']:
+            depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
+                'num_levels']
 
-            self.depth = depth
-            #! for sliding-window case, pass all points!
-            if self.cfg['generation']['sliding_window']:
-                # FIXME: set 100000 to 4 for debug
-                self.total_input_vol, self.total_query_vol, self.total_reso = \
-                    decide_total_volume_range(
-                        4, recep_field, unit_size, depth)  # contain the whole scene
-            else:
-                self.total_input_vol, self.total_query_vol, self.total_reso = \
-                    decide_total_volume_range(
-                        query_vol_metric, recep_field, unit_size, depth)
+        self.depth = depth
+        #! for sliding-window case, pass all points!
+        if self.cfg['generation']['sliding_window']:
+            # FIXME: set 100000 to 4 for debug
+            self.total_input_vol, self.total_query_vol, self.total_reso = \
+                decide_total_volume_range(
+                    4, recep_field, unit_size, depth)  # contain the whole scene
+        else:
+            self.total_input_vol, self.total_query_vol, self.total_reso = \
+                decide_total_volume_range(
+                    query_vol_metric, recep_field, unit_size, depth)
+        return
 
     @classmethod
     def fromConfig(cls, mode, cfg, return_idx=False):
@@ -193,11 +193,8 @@ class Shapes3dDataset(data.Dataset):
         model_path = os.path.join(self.dataset_folder, category, model)
         data = {}
 
-        if self.cfg['data']['input_type'] == 'pointcloud_crop':
-            info = self.get_vol_info(model_path)
-            data['pointcloud_crop'] = True
-        else:
-            info = c_idx
+        info = self.get_vol_info(model_path)
+        data['pointcloud_crop'] = True
 
         for field_name, field in self.fields.items():
             try:

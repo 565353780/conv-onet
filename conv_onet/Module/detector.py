@@ -26,8 +26,6 @@ class Detector(object):
 
         self.cfg = CONFIG
 
-        self.input_type = self.cfg['data']['input_type']
-
         self.dataset = Shapes3dDataset.fromConfig('test', self.cfg, True)
 
         self.model = ConvolutionalOccupancyNetwork.fromConfig(
