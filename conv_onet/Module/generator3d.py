@@ -69,6 +69,7 @@ class Generator3D(object):
         self.vol_bound = vol_bound
         if vol_info is not None:
             self.input_vol, _, _ = vol_info
+        return
 
     @classmethod
     def fromConfig(cls, model, cfg, device, **kwargs):
@@ -87,14 +88,8 @@ class Generator3D(object):
             cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
             2)
 
-        assert 'unet' in cfg['model']['encoder_kwargs'] or 'unet3d' in cfg[
-            'model']['encoder_kwargs']
-
-        if 'unet' in cfg['model']['encoder_kwargs']:
-            depth = cfg['model']['encoder_kwargs']['unet_kwargs']['depth']
-        elif 'unet3d' in cfg['model']['encoder_kwargs']:
-            depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
-                'num_levels']
+        depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
+            'num_levels']
 
         vol_info = decide_total_volume_range(query_vol_metric, recep_field,
                                              unit_size, depth)
