@@ -42,6 +42,10 @@ class PatchPointsField(Field):
             points = points.astype(np.float32)
             points += 1e-4 * np.random.randn(*points.shape)
 
+        if 'occupancies' not in points_dict.keys():
+            print("[ERROR][PatchPointsField::load]")
+            print("\t occupancies not in points_dict.keys()!")
+            return None
         occupancies = points_dict['occupancies']
         if self.unpackbits:
             occupancies = np.unpackbits(occupancies)[:points.shape[0]]
