@@ -4,13 +4,11 @@
 import os
 import torch
 import datetime
-import matplotlib
 import numpy as np
 import torch.optim as optim
+from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
-
-matplotlib.use('Agg')
 
 from conv_onet.Config.config import CONFIG
 
@@ -20,6 +18,8 @@ from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 
 from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset, collate_remove_none, worker_init_fn
 
+from conv_onet.Method.time import getCurrentTime
+
 from conv_onet.Module.generator3d import Generator3D
 from conv_onet.Module.trainer import Trainer
 
@@ -27,7 +27,7 @@ from conv_onet.Module.trainer import Trainer
 def demo():
     cfg = CONFIG
     device = torch.device("cuda")
-    out_dir = cfg['training']['out_dir']
+    out_dir = "./output/" + getCurrentTime()
     batch_size = cfg['training']['batch_size']
     backup_every = cfg['training']['backup_every']
 
@@ -55,23 +55,6 @@ def demo():
                             shuffle=False,
                             collate_fn=collate_remove_none,
                             worker_init_fn=worker_init_fn)
-
-    vis_loader = DataLoader(val_dataset,
-                            batch_size=1,
-                            shuffle=False,
-                            collate_fn=collate_remove_none,
-                            worker_init_fn=worker_init_fn)
-
-    iterator = iter(vis_loader)
-    for i in range(len(vis_loader)):
-        data_vis = next(iterator)
-        idx = data_vis['idx'].item()
-        model_dict = val_dataset.get_model_dict(idx)
-        category_id = model_dict.get('category', 'n/a')
-        category_name = val_dataset.metadata[category_id].get('name', 'n/a')
-        category_name = category_name.split(',')[0]
-        if category_name == 'n/a':
-            category_name = category_id
 
     model = ConvolutionalOccupancyNetwork.fromConfig(cfg, device)
 
@@ -113,7 +96,7 @@ def demo():
     while True:
         epoch_it += 1
 
-        for batch in train_loader:
+        for batch in tqdm(train_loader):
             it += 1
             loss = trainer.train_step(batch)
             logger.add_scalar('train/loss', loss, it)
@@ -128,12 +111,7 @@ def demo():
                 # FIXME: finish it later
                 if False:
                     mesh, stats_dict = generator.generate_mesh_sliding('data')
-
-                    mesh.export(
-                        os.path.join(
-                            out_dir, 'vis',
-                            '{}_{}_{}.off'.format(it, data_vis['category'],
-                                                  data_vis['it'])))
+                    mesh.export("test.off")
 
             if (checkpoint_every > 0 and (it % checkpoint_every) == 0):
                 print('Saving checkpoint')
