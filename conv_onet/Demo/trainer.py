@@ -74,8 +74,7 @@ def demo():
         if category_name == 'n/a':
             category_name = category_id
 
-    model = ConvolutionalOccupancyNetwork.fromConfig(cfg, device,
-                                                     train_dataset)
+    model = ConvolutionalOccupancyNetwork.fromConfig(cfg, device)
 
     generator = Generator3D.fromConfig(model, cfg, device)
 
