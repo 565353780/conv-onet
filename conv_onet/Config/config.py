@@ -3,8 +3,8 @@
 
 DATA = {
     'dataset': 'Shapes3D',
-    'path': '/home/chli/chLi/conv-onet/demo_data/demo/Matterport3D_processed',
-    #  'path': '/home/chli/chLi/conv-onet/synthetic_room_dataset/rooms_04',
+    #  'path': '/home/chli/chLi/conv-onet/demo_data/demo/Matterport3D_processed',
+    'path': '/home/chli/chLi/conv-onet/demo_train',
     'classes': [''],
     'train_split': 'train',
     'val_split': 'val',
@@ -17,6 +17,8 @@ DATA = {
     'padding': 0.1,
     'unit_size': 0.02,  # define the size of a voxel, in meter
     'query_vol_size': 90,  # query crop in voxel
+    'points_file': 'pointcloud.npz',
+    'points_iou_file': 'points_iou.npz',
 }
 
 MODEL = {
@@ -61,7 +63,7 @@ TEST = {
     'eval_mesh': True,
     'eval_pointcloud': False,
     'remove_wall': False,
-    'model_file': './room_grid64.pt'
+    #  'model_file': './room_grid64.pt'
 }
 
 GENERATION = {
