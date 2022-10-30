@@ -27,7 +27,7 @@ from conv_onet.Module.trainer import Trainer
 def demo():
     cfg = CONFIG
     device = torch.device("cuda")
-    out_dir = "./output/" + getCurrentTime()
+
     batch_size = cfg['training']['batch_size']
     backup_every = cfg['training']['backup_every']
 
@@ -37,7 +37,11 @@ def demo():
     else:
         model_selection_sign = -1
 
-    os.makedirs(out_dir, exist_ok=True)
+    current_time_str = getCurrentTime()
+    save_model_dir = "./output/models/" + current_time_str + "/"
+    log_dir = "./logs/" + current_time_str + "/"
+    os.makedirs(save_model_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
 
     train_dataset = Shapes3dDataset.fromConfig('train', cfg)
     val_dataset = Shapes3dDataset.fromConfig('val', cfg, return_idx=True)
@@ -62,10 +66,9 @@ def demo():
 
     # Intialize training
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
-    # optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
     trainer = Trainer.fromConfig(model, optimizer, cfg, device=device)
 
-    checkpoint_io = CheckpointIO(out_dir, model=model, optimizer=optimizer)
+    checkpoint_io = CheckpointIO(save_model_dir, model=model, optimizer=optimizer)
     try:
         load_dict = checkpoint_io.load('model.pt')
     except FileExistsError:
@@ -79,7 +82,7 @@ def demo():
         metric_val_best = -model_selection_sign * np.inf
     print('Current best validation metric (%s): %.8f' %
           (model_selection_metric, metric_val_best))
-    logger = SummaryWriter(os.path.join(out_dir, 'logs'))
+    logger = SummaryWriter(log_dir)
 
     # Shorthands
     print_every = cfg['training']['print_every']
@@ -90,8 +93,6 @@ def demo():
     # Print model
     nparameters = sum(p.numel() for p in model.parameters())
     print('Total number of parameters: %d' % nparameters)
-
-    print('output path: ', cfg['training']['out_dir'])
 
     while True:
         epoch_it += 1
