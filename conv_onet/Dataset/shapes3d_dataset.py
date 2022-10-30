@@ -8,13 +8,16 @@ import numpy as np
 from torch.utils import data
 
 from conv_onet.Data.field.index_field import IndexField
-from conv_onet.Method.field import get_inputs_field
+from conv_onet.Method.field import get_data_fields, get_inputs_field
 
 from conv_onet.Method.common import decide_total_volume_range, update_reso
 
 
 def collate_remove_none(batch):
+    print(batch)
     batch = list(filter(lambda x: x is not None, batch))
+    print(batch)
+    exit()
     return data.dataloader.default_collate(batch)
 
 
@@ -147,7 +150,7 @@ class Shapes3dDataset(data.Dataset):
 
         split = splits[mode]
 
-        fields = {}
+        fields = get_data_fields(mode, cfg)
         inputs_field = get_inputs_field(
             cfg['data']['pointcloud_n'],
             cfg['data']['pointcloud_noise'],
