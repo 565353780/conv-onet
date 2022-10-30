@@ -62,7 +62,8 @@ class Detector(object):
     def detectPointArray(self, point_array):
         data = {
             'inputs':
-            torch.tensor(point_array.astype(np.float32)).reshape(1, -1, 3).cuda(),
+            torch.tensor(point_array.astype(np.float32)).reshape(1, -1,
+                                                                 3).cuda(),
             'pointcloud_crop':
             True,
             'model':
