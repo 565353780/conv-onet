@@ -10,8 +10,6 @@ from conv_onet.Data.checkpoint_io import CheckpointIO
 
 from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 
-from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset
-
 from conv_onet.Method.io import export_pointcloud
 from conv_onet.Method.path import createFileFolder
 
@@ -27,10 +25,8 @@ class Detector(object):
 
         self.cfg = CONFIG
 
-        self.dataset = Shapes3dDataset.fromConfig('test', self.cfg, True)
-
         self.model = ConvolutionalOccupancyNetwork.fromConfig(
-            self.cfg, self.device, self.dataset)
+            self.cfg, self.device)
         self.model.eval()
 
         self.checkpoint_io = CheckpointIO(out_dir, model=self.model)
@@ -38,11 +34,6 @@ class Detector(object):
         self.generator = Generator3D.fromConfig(self.model,
                                                 self.cfg,
                                                 device=self.device)
-
-        self.test_loader = torch.utils.data.DataLoader(self.dataset,
-                                                       batch_size=1,
-                                                       num_workers=0,
-                                                       shuffle=False)
 
         self.loadModel(self.cfg['test']['model_file'])
         return
@@ -71,20 +62,10 @@ class Detector(object):
     def detectPointArray(self, point_array):
         data = {
             'inputs':
-            torch.tensor(point_array.astype(np.float32)).reshape(1, -1, 3),
+            torch.tensor(point_array.astype(np.float32)).reshape(1, -1, 3).cuda(),
             'pointcloud_crop':
             True,
-            'model': 'test',
+            'model':
+            'test',
         }
         return self.detect(data)
-
-    def detectAll(self):
-        for i, data in enumerate(self.test_loader):
-            idx = data['idx'].item()
-            model_dict = self.dataset.get_model_dict(idx)
-            data.update(model_dict)
-
-            print("[INFO][Detector::detectAll]")
-            print("\t start detect data " + str(i) + "...")
-            self.detect(data)
-        return True
