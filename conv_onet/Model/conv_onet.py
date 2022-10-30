@@ -46,7 +46,7 @@ class ConvolutionalOccupancyNetwork(nn.Module):
         self._device = device
 
     @classmethod
-    def fromConfig(cls, cfg, device=None, dataset=None, **kwargs):
+    def fromConfig(cls, cfg, device=None):
         encoder = cfg['model']['encoder']
         decoder = cfg['model']['decoder']
 
@@ -77,27 +77,24 @@ class ConvolutionalOccupancyNetwork(nn.Module):
         recep_field = 2**(
             cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
         reso = cfg['data']['query_vol_size'] + recep_field - 1
+
+        depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
         if 'grid' in fea_type:
             encoder_kwargs['grid_resolution'] = update_reso(
-                reso, dataset.depth)
+                reso, depth)
         if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
             encoder_kwargs['plane_resolution'] = update_reso(
-                reso, dataset.depth)
+                reso, depth)
 
         decoder = decoder_dict[decoder](dim=dim,
                                         c_dim=c_dim,
                                         padding=padding,
                                         **decoder_kwargs)
 
-        if encoder == 'idx':
-            encoder = nn.Embedding(len(dataset), c_dim)
-        elif encoder is not None:
-            encoder = encoder_dict[encoder](dim=dim,
-                                            c_dim=c_dim,
-                                            padding=padding,
-                                            **encoder_kwargs)
-        else:
-            encoder = None
+        encoder = encoder_dict[encoder](dim=dim,
+                                        c_dim=c_dim,
+                                        padding=padding,
+                                        **encoder_kwargs)
         return cls(decoder, encoder, device=device)
 
     def forward(self, p, inputs, sample=True, **kwargs):
