@@ -8,6 +8,7 @@ import matplotlib
 import numpy as np
 import torch.optim as optim
 from tensorboardX import SummaryWriter
+from torch.utils.data import DataLoader
 
 matplotlib.use('Agg')
 
@@ -41,27 +42,25 @@ def demo():
     train_dataset = Shapes3dDataset.fromConfig('train', cfg)
     val_dataset = Shapes3dDataset.fromConfig('val', cfg, return_idx=True)
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        num_workers=cfg['training']['n_workers'],
-        shuffle=True,
-        collate_fn=collate_remove_none,
-        worker_init_fn=worker_init_fn)
+    train_loader = DataLoader(train_dataset,
+                              batch_size=batch_size,
+                              num_workers=cfg['training']['n_workers'],
+                              shuffle=True,
+                              collate_fn=collate_remove_none,
+                              worker_init_fn=worker_init_fn)
 
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset,
-        batch_size=1,
-        num_workers=cfg['training']['n_workers_val'],
-        shuffle=False,
-        collate_fn=collate_remove_none,
-        worker_init_fn=worker_init_fn)
+    val_loader = DataLoader(val_dataset,
+                            batch_size=1,
+                            num_workers=cfg['training']['n_workers_val'],
+                            shuffle=False,
+                            collate_fn=collate_remove_none,
+                            worker_init_fn=worker_init_fn)
 
-    vis_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=1,
-                                             shuffle=False,
-                                             collate_fn=collate_remove_none,
-                                             worker_init_fn=worker_init_fn)
+    vis_loader = DataLoader(val_dataset,
+                            batch_size=1,
+                            shuffle=False,
+                            collate_fn=collate_remove_none,
+                            worker_init_fn=worker_init_fn)
 
     iterator = iter(vis_loader)
     for i in range(len(vis_loader)):
