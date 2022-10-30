@@ -4,6 +4,7 @@
 DATA = {
     'dataset': 'Shapes3D',
     'path': '/home/chli/chLi/conv-onet/demo_data/demo/Matterport3D_processed',
+    #  'path': '/home/chli/chLi/conv-onet/synthetic_room_dataset/rooms_04',
     'classes': [''],
     'train_split': 'train',
     'val_split': 'val',
