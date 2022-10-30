@@ -14,11 +14,7 @@ from conv_onet.Method.common import decide_total_volume_range, update_reso
 
 
 def collate_remove_none(batch):
-    print("============")
-    print(batch)
     batch = list(filter(lambda x: x is not None, batch))
-    print(batch)
-    print("============")
     return dataloader.default_collate(batch)
 
 
