@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -18,7 +17,6 @@ class Trainer(object):
         model (nn.Module): Occupancy Network model
         optimizer (optimizer): pytorch optimizer object
         device (device): pytorch device
-        vis_dir (str): visualization directory
         threshold (float): threshold value
         eval_sample (bool): whether to evaluate samples
 
@@ -28,18 +26,14 @@ class Trainer(object):
                  model,
                  optimizer,
                  device=None,
-                 vis_dir=None,
                  threshold=0.5,
                  eval_sample=False):
         self.model = model
         self.optimizer = optimizer
         self.device = device
-        self.vis_dir = vis_dir
         self.threshold = threshold
         self.eval_sample = eval_sample
-
-        if vis_dir is not None and not os.path.exists(vis_dir):
-            os.makedirs(vis_dir)
+        return
 
     @classmethod
     def fromConfig(cls, model, optimizer, cfg, device, **kwargs):
@@ -52,13 +46,10 @@ class Trainer(object):
             device (device): pytorch device
         '''
         threshold = cfg['test']['threshold']
-        out_dir = cfg['training']['out_dir']
-        vis_dir = os.path.join(out_dir, 'vis')
 
         return cls(model,
                    optimizer,
                    device=device,
-                   vis_dir=vis_dir,
                    threshold=threshold,
                    eval_sample=cfg['training']['eval_sample'])
 
