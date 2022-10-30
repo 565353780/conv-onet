@@ -23,5 +23,7 @@ conv_onet/Lib/libsimplify/build
 *.txt
 
 # output
+logs
 out
+output
 
