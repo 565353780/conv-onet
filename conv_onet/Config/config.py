@@ -16,7 +16,8 @@ DATA = {
     'pointcloud_noise': 0.0,
     'padding': 0.1,
     'unit_size': 0.02,  # define the size of a voxel, in meter
-    'query_vol_size': 90,  # query crop in voxel
+    #  'query_vol_size': 90,  # query crop in voxel
+    'query_vol_size': 9,  # query crop in voxel
     'points_file': 'points_iou.npz',
     'points_iou_file': 'points_iou.npz',
 }
@@ -44,7 +45,6 @@ MODEL = {
 }
 
 TRAINING = {
-    'out_dir': 'out/pointcloud_crop_training',
     'batch_size': 2,
     'print_every': 100,
     'visualize_every': 10000,
