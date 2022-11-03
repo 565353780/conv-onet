@@ -220,7 +220,6 @@ class Shapes3dDataset(Dataset):
             p_c = np.array(p_c).astype(np.float32)
 
             reso = query_vol_size + recep_field - 1
-            # make sure the defined reso can be properly processed by UNet
             reso = update_reso(reso)
             input_vol_metric = reso * unit_size
             query_vol_metric = query_vol_size * unit_size
