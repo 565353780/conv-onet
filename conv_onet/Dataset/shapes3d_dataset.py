@@ -256,7 +256,6 @@ class Shapes3dDataset(Dataset):
             query_vol = self.total_query_vol
 
         vol_info = {
-            'plane_type': ['grid'],
             'reso': reso,
             'input_vol': input_vol,
             'query_vol': query_vol
