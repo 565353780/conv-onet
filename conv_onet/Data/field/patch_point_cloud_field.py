@@ -62,8 +62,7 @@ class PatchPointCloudField(Field):
 
         index['grid'] = coord2index(points.copy(),
                                     vol['input_vol'],
-                                    reso=vol['reso'],
-                                    plane='grid')
+                                    reso=vol['reso'])
         index['grid'][:, mask] = vol['reso']**3
         data['ind'] = index
 
