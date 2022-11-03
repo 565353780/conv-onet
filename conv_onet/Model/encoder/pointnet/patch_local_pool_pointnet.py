@@ -136,7 +136,7 @@ class PatchLocalPoolPointnet(nn.Module):
         return fea_grid
 
     def pool_local(self, index, c):
-        bs, fea_dim = c.size(0), c.size(2)
+        _, fea_dim = c.size(0), c.size(2)
         keys = index.keys()
 
         c_out = 0
@@ -157,8 +157,6 @@ class PatchLocalPoolPointnet(nn.Module):
         p = inputs['points']
         index = inputs['index']
 
-        batch_size, T, D = p.size()
-
         if self.map2local:
             pp = self.map2local(p)
             net = self.fc_pos(pp)
@@ -174,13 +172,5 @@ class PatchLocalPoolPointnet(nn.Module):
         c = self.fc_c(net)
 
         fea = {}
-        if 'grid' in self.plane_type:
-            fea['grid'] = self.generate_grid_features(index['grid'], c)
-        if 'xz' in self.plane_type:
-            fea['xz'] = self.generate_plane_features(index['xz'], c)
-        if 'xy' in self.plane_type:
-            fea['xy'] = self.generate_plane_features(index['xy'], c)
-        if 'yz' in self.plane_type:
-            fea['yz'] = self.generate_plane_features(index['yz'], c)
-
+        fea['grid'] = self.generate_grid_features(index['grid'], c)
         return fea
