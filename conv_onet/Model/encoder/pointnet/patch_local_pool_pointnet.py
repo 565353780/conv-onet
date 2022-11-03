@@ -28,7 +28,6 @@ class PatchLocalPoolPointnet(nn.Module):
         unet3d_kwargs (str): 3D U-Net parameters
         plane_resolution (int): defined resolution for plane feature
         grid_resolution (int): defined resolution for grid feature
-        plane_type (str): feature type, 'xz' - 1-plane, ['xz', 'xy', 'yz'] - 3-plane, ['grid'] - 3D grid volume
         padding (float): conventional padding paramter of ONet for unit cube, so [-0.5, 0.5] -> [-0.55, 0.55]
         n_blocks (int): number of blocks ResNetBlockFC layers
         local_coord (bool): whether to use local coordinate
@@ -47,7 +46,6 @@ class PatchLocalPoolPointnet(nn.Module):
                  unet3d_kwargs=None,
                  plane_resolution=None,
                  grid_resolution=None,
-                 plane_type='xz',
                  padding=0.1,
                  n_blocks=5,
                  local_coord=False,
@@ -65,7 +63,6 @@ class PatchLocalPoolPointnet(nn.Module):
         self.hidden_dim = hidden_dim
         self.reso_plane = plane_resolution
         self.reso_grid = grid_resolution
-        self.plane_type = plane_type
         self.padding = padding
 
         if unet:

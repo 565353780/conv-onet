@@ -20,11 +20,10 @@ class PatchPointCloudField(Field):
         transform (list): list of transformations applied to data points
     '''
 
-    def __init__(self,
-                 file_name,
-                 transform=None):
+    def __init__(self, file_name, transform=None):
         self.file_name = file_name
         self.transform = transform
+        return
 
     def load(self, model_path, idx, vol):
         ''' Loads the data point.
@@ -61,15 +60,11 @@ class PatchPointCloudField(Field):
         # calculate index of each point w.r.t. defined resolution
         index = {}
 
-        for key in vol['plane_type']:
-            index[key] = coord2index(points.copy(),
-                                     vol['input_vol'],
-                                     reso=vol['reso'],
-                                     plane=key)
-            if key == 'grid':
-                index[key][:, mask] = vol['reso']**3
-            else:
-                index[key][:, mask] = vol['reso']**2
+        index['grid'] = coord2index(points.copy(),
+                                    vol['input_vol'],
+                                    reso=vol['reso'],
+                                    plane='grid')
+        index['grid'][:, mask] = vol['reso']**3
         data['ind'] = index
 
         return data

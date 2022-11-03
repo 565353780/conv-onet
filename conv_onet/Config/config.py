@@ -24,8 +24,6 @@ DATA = {
 
 MODEL = {
     'local_coord': True,
-    'decoder': 'simple_local_crop',
-    'encoder': 'pointnet_crop_local_pool',
     'decoder_kwargs': {
         'sample_mode': 'bilinear',  # bilinear / nearest
         'hidden_size': 32,

@@ -67,11 +67,10 @@ class PatchPointsField(Field):
 
         # calculate normalized coordinate w.r.t. defined query volume
         p_n = {}
-        for key in vol['plane_type']:
-            # projected coordinates normalized to the range of [0, 1]
-            p_n[key] = normalize_coord(data[None].copy(),
-                                       vol['input_vol'],
-                                       plane=key)
+        # projected coordinates normalized to the range of [0, 1]
+        p_n['grid'] = normalize_coord(data[None].copy(),
+                                      vol['input_vol'],
+                                      plane='grid')
         data['normalized'] = p_n
 
         return data

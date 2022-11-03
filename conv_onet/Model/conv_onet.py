@@ -5,30 +5,11 @@ import torch
 import torch.nn as nn
 from torch import distributions as dist
 
-from conv_onet.Model.decoder.local_decoder import LocalDecoder
 from conv_onet.Model.decoder.patch_local_decoder import PatchLocalDecoder
-from conv_onet.Model.decoder.local_point_decoder import LocalPointDecoder
 
-from conv_onet.Model.encoder.pointnet.local_pool_pointnet import LocalPoolPointnet
 from conv_onet.Model.encoder.pointnet.patch_local_pool_pointnet import PatchLocalPoolPointnet
-from conv_onet.Model.encoder.pointnetpp.pointnet_plus_plus import PointNetPlusPlus
-from conv_onet.Model.encoder.voxel.local_voxel_encoder import LocalVoxelEncoder
 
 from conv_onet.Method.common import update_reso
-
-encoder_dict = {
-    'pointnet_local_pool': LocalPoolPointnet,
-    'pointnet_crop_local_pool': PatchLocalPoolPointnet,
-    'pointnet_plus_plus': PointNetPlusPlus,
-    'voxel_simple_local': LocalVoxelEncoder,
-}
-
-# Decoder dictionary
-decoder_dict = {
-    'simple_local': LocalDecoder,
-    'simple_local_crop': PatchLocalDecoder,
-    'simple_local_point': LocalPointDecoder
-}
 
 
 class ConvolutionalOccupancyNetwork(nn.Module):
@@ -47,9 +28,6 @@ class ConvolutionalOccupancyNetwork(nn.Module):
 
     @classmethod
     def fromConfig(cls, cfg, device=None):
-        encoder = cfg['model']['encoder']
-        decoder = cfg['model']['decoder']
-
         dim = cfg['data']['dim']
         c_dim = cfg['model']['c_dim']
 
@@ -58,12 +36,9 @@ class ConvolutionalOccupancyNetwork(nn.Module):
 
         padding = cfg['data']['padding']
 
-        # for pointcloud_crop
-        try:
-            encoder_kwargs['unit_size'] = cfg['data']['unit_size']
-            decoder_kwargs['unit_size'] = cfg['data']['unit_size']
-        except:
-            pass
+        encoder_kwargs['unit_size'] = cfg['data']['unit_size']
+        decoder_kwargs['unit_size'] = cfg['data']['unit_size']
+
         # local positional encoding
         if 'local_coord' in cfg['model'].keys():
             encoder_kwargs['local_coord'] = cfg['model']['local_coord']
@@ -80,15 +55,15 @@ class ConvolutionalOccupancyNetwork(nn.Module):
         depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
         encoder_kwargs['grid_resolution'] = update_reso(reso, depth)
 
-        decoder = decoder_dict[decoder](dim=dim,
-                                        c_dim=c_dim,
-                                        padding=padding,
-                                        **decoder_kwargs)
+        decoder = PatchLocalDecoder(dim=dim,
+                                    c_dim=c_dim,
+                                    padding=padding,
+                                    **decoder_kwargs)
 
-        encoder = encoder_dict[encoder](dim=dim,
-                                        c_dim=c_dim,
-                                        padding=padding,
-                                        **encoder_kwargs)
+        encoder = PatchLocalPoolPointnet(dim=dim,
+                                         c_dim=c_dim,
+                                         padding=padding,
+                                         **encoder_kwargs)
         return cls(decoder, encoder, device=device)
 
     def forward(self, p, inputs, sample=True, **kwargs):

@@ -44,12 +44,12 @@ class PatchLocalDecoder(nn.Module):
 
         if c_dim != 0:
             self.fc_c = nn.ModuleList(
-                [nn.Linear(c_dim, hidden_size) for i in range(n_blocks)])
+                [nn.Linear(c_dim, hidden_size) for _ in range(n_blocks)])
 
         #self.fc_p = nn.Linear(dim, hidden_size)
         self.fc_out = nn.Linear(hidden_size, 1)
         self.blocks = nn.ModuleList(
-            [ResnetBlockFC(hidden_size) for i in range(n_blocks)])
+            [ResnetBlockFC(hidden_size) for _ in range(n_blocks)])
 
         if not leaky:
             self.actvn = F.relu
@@ -87,23 +87,14 @@ class PatchLocalDecoder(nn.Module):
                               mode=self.sample_mode).squeeze(-1).squeeze(-1)
         return c
 
-    def forward(self, p, c_plane, **kwargs):
+    def forward(self, p, c_plane):
         p_n = p['p_n']
         p = p['p']
 
         if self.c_dim != 0:
-            plane_type = list(c_plane.keys())
-            c = 0
-            if 'grid' in plane_type:
-                c += self.sample_feature(p_n['grid'],
-                                         c_plane['grid'],
-                                         fea_type='3d')
-            if 'xz' in plane_type:
-                c += self.sample_feature(p_n['xz'], c_plane['xz'])
-            if 'xy' in plane_type:
-                c += self.sample_feature(p_n['xy'], c_plane['xy'])
-            if 'yz' in plane_type:
-                c += self.sample_feature(p_n['yz'], c_plane['yz'])
+            c = self.sample_feature(p_n['grid'],
+                                    c_plane['grid'],
+                                    fea_type='3d')
             c = c.transpose(1, 2)
 
         p = p.float()
@@ -118,5 +109,4 @@ class PatchLocalDecoder(nn.Module):
 
         out = self.fc_out(self.actvn(net))
         out = out.squeeze(-1)
-
         return out
