@@ -68,7 +68,7 @@ class Generator3D(object):
         return
 
     @classmethod
-    def fromConfig(cls, model, cfg, device, **kwargs):
+    def fromConfig(cls, model, cfg, device):
         ''' Returns the generator object.
 
         Args:
@@ -112,72 +112,6 @@ class Generator3D(object):
             vol_info=vol_info,
             vol_bound=vol_bound,
         )
-
-    def generate_mesh_sliding(self, data):
-        ''' Generates the output mesh in sliding-window manner.
-            Adapt for real-world scale.
-
-        Args:
-            data (tensor): data tensor
-        '''
-        self.model.eval()
-        device = self.device
-        stats_dict = {}
-
-        threshold = np.log(self.threshold) - np.log(1. - self.threshold)
-
-        inputs = data.get('inputs', torch.empty(1, 0)).to(device)
-        kwargs = {}
-
-        # acquire the boundary for every crops
-        self.get_crop_bound(inputs)
-
-        nx = self.resolution0
-        n_crop = self.vol_bound['n_crop']
-        n_crop_axis = self.vol_bound['axis_n_crop']
-
-        # occupancy in each direction
-        r = nx * 2**0
-        occ_values = np.array([]).reshape(r, r, 0)
-        occ_values_y = np.array([]).reshape(r, 0, r * n_crop_axis[2])
-        occ_values_x = np.array([]).reshape(0, r * n_crop_axis[1],
-                                            r * n_crop_axis[2])
-        for i in trange(n_crop):
-            # encode the current crop
-            vol_bound = {}
-            vol_bound['query_vol'] = self.vol_bound['query_vol'][i]
-            vol_bound['input_vol'] = self.vol_bound['input_vol'][i]
-            c = self.encode_crop(inputs, device, vol_bound=vol_bound)
-
-            bb_min = self.vol_bound['query_vol'][i][0]
-            bb_max = bb_min + self.vol_bound['query_crop_size']
-
-            t = (bb_max - bb_min) / nx  # inteval
-            pp = np.mgrid[bb_min[0]:bb_max[0]:t[0], bb_min[1]:bb_max[1]:t[1],
-                          bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
-            pp = torch.from_numpy(pp).to(device)
-            values = self.eval_points(pp, c, vol_bound=vol_bound,
-                                      **kwargs).detach().cpu().numpy()
-            values = values.reshape(nx, nx, nx)
-
-            # concatenate occ_value along every axis
-            # along z axis
-            occ_values = np.concatenate((occ_values, values), axis=2)
-            # along y axis
-            if (i + 1) % n_crop_axis[2] == 0:
-                occ_values_y = np.concatenate((occ_values_y, occ_values),
-                                              axis=1)
-                occ_values = np.array([]).reshape(r, r, 0)
-            # along x axis
-            if (i + 1) % (n_crop_axis[2] * n_crop_axis[1]) == 0:
-                occ_values_x = np.concatenate((occ_values_x, occ_values_y),
-                                              axis=0)
-                occ_values_y = np.array([]).reshape(r, 0, r * n_crop_axis[2])
-
-        value_grid = occ_values_x
-        mesh = self.extract_mesh(value_grid, c, stats_dict=stats_dict)
-
-        return mesh, stats_dict
 
     def get_crop_bound(self, inputs):
         ''' Divide a scene into crops, get boundary for each crop
@@ -321,73 +255,6 @@ class Generator3D(object):
         occ_hat = torch.cat(occ_hats, dim=0)
         return occ_hat
 
-    def extract_mesh(self, occ_hat, c=None, stats_dict=dict()):
-        ''' Extracts the mesh from the predicted occupancy grid.
-
-        Args:
-            occ_hat (tensor): value grid of occupancies
-            c (tensor): encoded feature volumes
-            stats_dict (dict): stats dictionary
-        '''
-        # Some short hands
-        n_x, n_y, n_z = occ_hat.shape
-        box_size = 1 + self.padding
-        threshold = np.log(self.threshold) - np.log(1. - self.threshold)
-        # Make sure that mesh is watertight
-        t0 = time.time()
-        occ_hat_padded = np.pad(occ_hat, 1, 'constant', constant_values=-1e6)
-        vertices, triangles = marching_cubes(occ_hat_padded, threshold)
-        stats_dict['time (marching cubes)'] = time.time() - t0
-        # Strange behaviour in libmcubes: vertices are shifted by 0.5
-        vertices -= 0.5
-        # # Undo padding
-        vertices -= 1
-
-        if self.vol_bound is not None:
-            # Scale the mesh back to its original metric
-            bb_min = self.vol_bound['query_vol'][:, 0].min(axis=0)
-            bb_max = self.vol_bound['query_vol'][:, 1].max(axis=0)
-            mc_unit = max(bb_max - bb_min) / (
-                self.vol_bound['axis_n_crop'].max() * self.resolution0 * 2**0)
-            vertices = vertices * mc_unit + bb_min
-        else:
-            # Normalize to bounding box
-            vertices /= np.array([n_x - 1, n_y - 1, n_z - 1])
-            vertices = box_size * (vertices - 0.5)
-
-        # Estimate normals if needed
-        if self.with_normals and not vertices.shape[0] == 0:
-            t0 = time.time()
-            normals = self.estimate_normals(vertices, c)
-            stats_dict['time (normals)'] = time.time() - t0
-
-        else:
-            normals = None
-
-        # Create mesh
-        mesh = trimesh.Trimesh(vertices,
-                               triangles,
-                               vertex_normals=normals,
-                               process=False)
-
-        # Directly return if mesh is empty
-        if vertices.shape[0] == 0:
-            return mesh
-
-        # TODO: normals are lost here
-        if self.simplify_nfaces is not None:
-            t0 = time.time()
-            mesh = simplify_mesh(mesh, self.simplify_nfaces, 5.)
-            stats_dict['time (simplify)'] = time.time() - t0
-
-        # Refine mesh
-        if self.refinement_step > 0:
-            t0 = time.time()
-            self.refine_mesh(mesh, occ_hat, c)
-            stats_dict['time (refine)'] = time.time() - t0
-
-        return mesh
-
     def estimate_normals(self, vertices, c=None):
         ''' Estimates the normals by computing the gradient of the objective.
 
@@ -442,7 +309,7 @@ class Generator3D(object):
         # Start optimization
         optimizer = optim.RMSprop([v], lr=1e-4)
 
-        for it_r in trange(self.refinement_step):
+        for _ in trange(self.refinement_step):
             optimizer.zero_grad()
 
             # Loss
@@ -477,3 +344,134 @@ class Generator3D(object):
         mesh.vertices = v.data.cpu().numpy()
 
         return mesh
+
+    def extract_mesh(self, occ_hat, c=None, stats_dict=dict()):
+        ''' Extracts the mesh from the predicted occupancy grid.
+
+        Args:
+            occ_hat (tensor): value grid of occupancies
+            c (tensor): encoded feature volumes
+            stats_dict (dict): stats dictionary
+        '''
+        # Some short hands
+        n_x, n_y, n_z = occ_hat.shape
+        box_size = 1 + self.padding
+        threshold = np.log(self.threshold) - np.log(1. - self.threshold)
+        # Make sure that mesh is watertight
+        t0 = time.time()
+        occ_hat_padded = np.pad(occ_hat, 1, 'constant', constant_values=-1e6)
+        vertices, triangles = marching_cubes(occ_hat_padded, threshold)
+        stats_dict['time (marching cubes)'] = time.time() - t0
+        # Strange behaviour in libmcubes: vertices are shifted by 0.5
+        vertices -= 0.5
+        # # Undo padding
+        vertices -= 1
+
+        if self.vol_bound is not None:
+            # Scale the mesh back to its original metric
+            bb_min = self.vol_bound['query_vol'][:, 0].min(axis=0)
+            bb_max = self.vol_bound['query_vol'][:, 1].max(axis=0)
+            mc_unit = max(bb_max - bb_min) / (
+                self.vol_bound['axis_n_crop'].max() * self.resolution0)
+            vertices = vertices * mc_unit + bb_min
+        else:
+            # Normalize to bounding box
+            vertices /= np.array([n_x - 1, n_y - 1, n_z - 1])
+            vertices = box_size * (vertices - 0.5)
+
+        # Estimate normals if needed
+        if self.with_normals and not vertices.shape[0] == 0:
+            t0 = time.time()
+            normals = self.estimate_normals(vertices, c)
+            stats_dict['time (normals)'] = time.time() - t0
+
+        else:
+            normals = None
+
+        # Create mesh
+        mesh = trimesh.Trimesh(vertices,
+                               triangles,
+                               vertex_normals=normals,
+                               process=False)
+
+        # Directly return if mesh is empty
+        if vertices.shape[0] == 0:
+            return mesh
+
+        # TODO: normals are lost here
+        if self.simplify_nfaces is not None:
+            t0 = time.time()
+            mesh = simplify_mesh(mesh, self.simplify_nfaces, 5.)
+            stats_dict['time (simplify)'] = time.time() - t0
+
+        # Refine mesh
+        if self.refinement_step > 0:
+            t0 = time.time()
+            self.refine_mesh(mesh, occ_hat, c)
+            stats_dict['time (refine)'] = time.time() - t0
+
+        return mesh
+
+    def generate_mesh_sliding(self, data):
+        ''' Generates the output mesh in sliding-window manner.
+            Adapt for real-world scale.
+
+        Args:
+            data (tensor): data tensor
+        '''
+        self.model.eval()
+        device = self.device
+        stats_dict = {}
+
+        inputs = data.get('inputs', torch.empty(1, 0)).to(device)
+        kwargs = {}
+
+        # acquire the boundary for every crops
+        self.get_crop_bound(inputs)
+
+        nx = self.resolution0
+        n_crop = self.vol_bound['n_crop']
+        n_crop_axis = self.vol_bound['axis_n_crop']
+
+        # occupancy in each direction
+        r = nx
+        occ_values = np.array([]).reshape(r, r, 0)
+        occ_values_y = np.array([]).reshape(r, 0, r * n_crop_axis[2])
+        occ_values_x = np.array([]).reshape(0, r * n_crop_axis[1],
+                                            r * n_crop_axis[2])
+        for i in trange(n_crop):
+            # encode the current crop
+            vol_bound = {}
+            vol_bound['query_vol'] = self.vol_bound['query_vol'][i]
+            vol_bound['input_vol'] = self.vol_bound['input_vol'][i]
+            c = self.encode_crop(inputs, device, vol_bound=vol_bound)
+
+            bb_min = self.vol_bound['query_vol'][i][0]
+            bb_max = bb_min + self.vol_bound['query_crop_size']
+
+            t = (bb_max - bb_min) / nx  # inteval
+            pp = np.mgrid[bb_min[0]:bb_max[0]:t[0], bb_min[1]:bb_max[1]:t[1],
+                          bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
+            pp = torch.from_numpy(pp).to(device)
+            values = self.eval_points(pp, c, vol_bound=vol_bound,
+                                      **kwargs).detach().cpu().numpy()
+            values = values.reshape(nx, nx, nx)
+
+            # concatenate occ_value along every axis
+            # along z axis
+            occ_values = np.concatenate((occ_values, values), axis=2)
+            # along y axis
+            if (i + 1) % n_crop_axis[2] == 0:
+                occ_values_y = np.concatenate((occ_values_y, occ_values),
+                                              axis=1)
+                occ_values = np.array([]).reshape(r, r, 0)
+            # along x axis
+            if (i + 1) % (n_crop_axis[2] * n_crop_axis[1]) == 0:
+                occ_values_x = np.concatenate((occ_values_x, occ_values_y),
+                                              axis=0)
+                occ_values_y = np.array([]).reshape(r, 0, r * n_crop_axis[2])
+
+        value_grid = occ_values_x
+        mesh = self.extract_mesh(value_grid, c, stats_dict=stats_dict)
+
+        return mesh, stats_dict
