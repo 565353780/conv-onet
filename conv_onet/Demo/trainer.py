@@ -68,7 +68,9 @@ def demo():
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     trainer = Trainer.fromConfig(model, optimizer, cfg, device=device)
 
-    checkpoint_io = CheckpointIO(save_model_dir, model=model, optimizer=optimizer)
+    checkpoint_io = CheckpointIO(save_model_dir,
+                                 model=model,
+                                 optimizer=optimizer)
     try:
         load_dict = checkpoint_io.load('model.pt')
     except FileExistsError:
