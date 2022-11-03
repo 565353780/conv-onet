@@ -120,18 +120,14 @@ class Shapes3dDataset(Dataset):
         self.split = split
         # proper resolution for feature plane/volume of the ENTIRE scene
         unit_size = self.cfg['data']['unit_size']
-        recep_field = 2**(
-            self.cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
-            + 2)
-
-        self.depth = self.cfg['model']['encoder_kwargs']['unet3d_kwargs'][
-            'num_levels']
+        recep_field = 2**6
+        self.depth = 4
 
         #! for sliding-window case, pass all points!
         # FIXME: set 100000 to 4 for debug
         self.total_input_vol, self.total_query_vol, self.total_reso = \
             decide_total_volume_range(
-                4, recep_field, unit_size, self.depth)  # contain the whole scene
+                4, recep_field, unit_size)  # contain the whole scene
         return
 
     @classmethod
@@ -222,9 +218,7 @@ class Shapes3dDataset(Dataset):
         query_vol_size = self.cfg['data']['query_vol_size']
         unit_size = self.cfg['data']['unit_size']
         field_name = self.cfg['data']['pointcloud_file']
-        recep_field = 2**(
-            self.cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
-            + 2)
+        recep_field = 2**6
 
         file_path = os.path.join(model_path, field_name)
 
@@ -241,7 +235,7 @@ class Shapes3dDataset(Dataset):
 
             reso = query_vol_size + recep_field - 1
             # make sure the defined reso can be properly processed by UNet
-            reso = update_reso(reso, self.depth)
+            reso = update_reso(reso)
             input_vol_metric = reso * unit_size
             query_vol_metric = query_vol_size * unit_size
 

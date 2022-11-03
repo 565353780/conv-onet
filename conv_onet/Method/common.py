@@ -342,7 +342,7 @@ def coord2index(p, vol_range, reso=None):
     return index[None]
 
 
-def update_reso(reso, depth):
+def update_reso(reso, depth=4):
     ''' Update the defined resolution so that UNet can process.
 
     Args:
@@ -359,19 +359,16 @@ def update_reso(reso, depth):
     return reso
 
 
-def decide_total_volume_range(query_vol_metric, recep_field, unit_size,
-                              unet_depth):
+def decide_total_volume_range(query_vol_metric, recep_field, unit_size):
     ''' Update the defined resolution so that UNet can process.
 
     Args:
         query_vol_metric (numpy array): query volume size
         recep_field (int): defined the receptive field for U-Net
         unit_size (float): the defined voxel size
-        unet_depth (int): U-Net number of layers
     '''
     reso = query_vol_metric / unit_size + recep_field - 1
-    reso = update_reso(
-        int(reso), unet_depth)  # make sure input reso can be processed by UNet
+    reso = update_reso(int(reso))
     input_vol_metric = reso * unit_size
     p_c = np.array([0.0, 0.0, 0.0]).astype(np.float32)
     lb_input_vol, ub_input_vol = p_c - input_vol_metric / 2, p_c + input_vol_metric / 2

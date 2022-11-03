@@ -80,16 +80,13 @@ class Generator3D(object):
         # calculate the volume boundary
         query_vol_metric = cfg['data']['padding'] + 1
         unit_size = cfg['data']['unit_size']
-        recep_field = 2**(
-            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
-
-        depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
+        recep_field = 2**6
 
         vol_info = decide_total_volume_range(query_vol_metric, recep_field,
-                                             unit_size, depth)
+                                             unit_size)
 
         grid_reso = cfg['data']['query_vol_size'] + recep_field - 1
-        grid_reso = update_reso(grid_reso, depth)
+        grid_reso = update_reso(grid_reso)
         query_vol_size = cfg['data']['query_vol_size'] * unit_size
         input_vol_size = grid_reso * unit_size
         # only for the sliding window case

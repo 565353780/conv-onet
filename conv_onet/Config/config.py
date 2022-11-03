@@ -9,7 +9,6 @@ DATA = {
     'train_split': 'train',
     'val_split': 'val',
     'test_split': 'test',
-    'dim': 3,
     'points_subsample': 1024,
     'pointcloud_file': 'pointcloud.npz',
     'pointcloud_n': 200000,
@@ -20,25 +19,6 @@ DATA = {
     #  'query_vol_size': 9,  # query crop in voxel
     'points_file': 'points_iou.npz',
     'points_iou_file': 'points_iou.npz',
-}
-
-MODEL = {
-    'local_coord': True,
-    'decoder_kwargs': {
-        'sample_mode': 'bilinear',  # bilinear / nearest
-        'hidden_size': 32,
-    },
-    'encoder_kwargs': {
-        'hidden_dim': 32,
-        'unet3d': True,
-        'unet3d_kwargs': {
-            'num_levels': 4,  # define the receptive field, 3 -> 32, 4 -> 64
-            'f_maps': 32,
-            'in_channels': 32,
-            'out_channels': 32,
-        },
-    },
-    'c_dim': 32,
 }
 
 TRAINING = {
@@ -79,7 +59,6 @@ GENERATION = {
 
 CONFIG = {
     'data': DATA,
-    'model': MODEL,
     'training': TRAINING,
     'test': TEST,
     'generation': GENERATION,

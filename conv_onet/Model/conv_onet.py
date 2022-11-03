@@ -14,54 +14,32 @@ from conv_onet.Method.common import update_reso
 
 class ConvolutionalOccupancyNetwork(nn.Module):
 
-    def __init__(self, decoder, encoder=None, device=None):
+    def __init__(self, padding, unit_size, query_vol_size, device):
         super().__init__()
 
-        self.decoder = decoder.to(device)
+        self.decoder = PatchLocalDecoder(c_dim=32,
+                                         hidden_size=32,
+                                         local_coord=True,
+                                         unit_size=unit_size).to(device)
 
-        if encoder is not None:
-            self.encoder = encoder.to(device)
-        else:
-            self.encoder = None
+        reso = query_vol_size + 2**6 - 1
+        grid_resolution = update_reso(reso)
+        self.encoder = PatchLocalPoolPointnet(c_dim=32,
+                                              hidden_dim=32,
+                                              grid_resolution=grid_resolution,
+                                              padding=padding,
+                                              local_coord=True,
+                                              unit_size=unit_size)
 
         self._device = device
+        return
 
     @classmethod
     def fromConfig(cls, cfg, device=None):
-        dim = cfg['data']['dim']
-        c_dim = cfg['model']['c_dim']
-
-        encoder_kwargs = cfg['model']['encoder_kwargs']
-        decoder_kwargs = cfg['model']['decoder_kwargs']
-
-        padding = cfg['data']['padding']
-
-        encoder_kwargs['unit_size'] = cfg['data']['unit_size']
-        decoder_kwargs['unit_size'] = cfg['data']['unit_size']
-
-        # local positional encoding
-        if 'local_coord' in cfg['model'].keys():
-            encoder_kwargs['local_coord'] = cfg['model']['local_coord']
-            decoder_kwargs['local_coord'] = cfg['model']['local_coord']
-        if 'pos_encoding' in cfg['model']:
-            encoder_kwargs['pos_encoding'] = cfg['model']['pos_encoding']
-            decoder_kwargs['pos_encoding'] = cfg['model']['pos_encoding']
-
         # update the feature volume/plane resolution
-        recep_field = 2**(
-            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
-        reso = cfg['data']['query_vol_size'] + recep_field - 1
 
-        depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
-        encoder_kwargs['grid_resolution'] = update_reso(reso, depth)
-
-        decoder = PatchLocalDecoder(dim=dim, c_dim=c_dim, **decoder_kwargs)
-
-        encoder = PatchLocalPoolPointnet(dim=dim,
-                                         c_dim=c_dim,
-                                         padding=padding,
-                                         **encoder_kwargs)
-        return cls(decoder, encoder, device=device)
+        return cls(cfg['data']['padding'], cfg['data']['unit_size'],
+                   cfg['data']['query_vol_size'], device)
 
     def forward(self, p, inputs, sample=True, **kwargs):
         c = self.encode_inputs(inputs)

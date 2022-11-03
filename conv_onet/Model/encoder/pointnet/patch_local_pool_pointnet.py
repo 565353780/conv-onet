@@ -6,7 +6,6 @@ import torch.nn as nn
 from torch_scatter import scatter_mean, scatter_max
 
 from conv_onet.Model.layer.resnet_block_fc import ResnetBlockFC
-from conv_onet.Model.encoder.unet.unet import UNet
 from conv_onet.Model.encoder.unet3d.unet3d import UNet3D
 
 from conv_onet.Method.common import map2local
@@ -22,10 +21,6 @@ class PatchLocalPoolPointnet(nn.Module):
         dim (int): input points dimension
         hidden_dim (int): hidden dimension of the network
         scatter_type (str): feature aggregation when doing local pooling
-        unet (bool): weather to use U-Net
-        unet_kwargs (str): U-Net parameters
-        unet3d (bool): weather to use 3D U-Net
-        unet3d_kwargs (str): 3D U-Net parameters
         plane_resolution (int): defined resolution for plane feature
         grid_resolution (int): defined resolution for grid feature
         padding (float): conventional padding paramter of ONet for unit cube, so [-0.5, 0.5] -> [-0.55, 0.55]
@@ -40,10 +35,6 @@ class PatchLocalPoolPointnet(nn.Module):
                  dim=3,
                  hidden_dim=128,
                  scatter_type='max',
-                 unet=False,
-                 unet_kwargs=None,
-                 unet3d=False,
-                 unet3d_kwargs=None,
                  plane_resolution=None,
                  grid_resolution=None,
                  padding=0.1,
@@ -65,15 +56,7 @@ class PatchLocalPoolPointnet(nn.Module):
         self.reso_grid = grid_resolution
         self.padding = padding
 
-        if unet:
-            self.unet = UNet(c_dim, in_channels=c_dim, **unet_kwargs)
-        else:
-            self.unet = None
-
-        if unet3d:
-            self.unet3d = UNet3D(**unet3d_kwargs)
-        else:
-            self.unet3d = None
+        self.unet3d = UNet3D(32, 32, f_maps=32)
 
         if scatter_type == 'max':
             self.scatter = scatter_max
@@ -106,11 +89,6 @@ class PatchLocalPoolPointnet(nn.Module):
 
         fea_plane = fea_plane.reshape(c.size(0), self.c_dim, self.reso_plane,
                                       self.reso_plane)
-
-        # process the plane features with UNet
-        if self.unet is not None:
-            fea_plane = self.unet(fea_plane)
-
         return fea_plane
 
     def generate_grid_features(self, index, c):
@@ -126,10 +104,7 @@ class PatchLocalPoolPointnet(nn.Module):
                 fea_grid = fea_grid[:, :, :-1]
         fea_grid = fea_grid.reshape(c.size(0), self.c_dim, self.reso_grid,
                                     self.reso_grid, self.reso_grid)
-
-        if self.unet3d is not None:
-            fea_grid = self.unet3d(fea_grid)
-
+        fea_grid = self.unet3d(fea_grid)
         return fea_grid
 
     def pool_local(self, index, c):
