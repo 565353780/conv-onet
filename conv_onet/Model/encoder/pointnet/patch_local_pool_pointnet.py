@@ -55,7 +55,7 @@ class PatchLocalPoolPointnet(nn.Module):
         self.c_dim = c_dim
 
         self.blocks = nn.ModuleList([
-            ResnetBlockFC(2 * hidden_dim, hidden_dim) for i in range(n_blocks)
+            ResnetBlockFC(2 * hidden_dim, hidden_dim) for _ in range(n_blocks)
         ])
         self.fc_c = nn.Linear(hidden_dim, c_dim)
 
@@ -134,20 +134,15 @@ class PatchLocalPoolPointnet(nn.Module):
 
     def pool_local(self, index, c):
         _, fea_dim = c.size(0), c.size(2)
-        keys = index.keys()
 
         c_out = 0
-        for key in keys:
-            # scatter plane features from points
-            if key == 'grid':
-                fea = self.scatter(c.permute(0, 2, 1), index[key])
-            else:
-                fea = self.scatter(c.permute(0, 2, 1), index[key])
-            if self.scatter == scatter_max:
-                fea = fea[0]
-            # gather feature back to points
-            fea = fea.gather(dim=2, index=index[key].expand(-1, fea_dim, -1))
-            c_out += fea
+        # scatter plane features from points
+        fea = self.scatter(c.permute(0, 2, 1), index['grid'])
+        if self.scatter == scatter_max:
+            fea = fea[0]
+        # gather feature back to points
+        fea = fea.gather(dim=2, index=index['grid'].expand(-1, fea_dim, -1))
+        c_out += fea
         return c_out.permute(0, 2, 1)
 
     def forward(self, inputs):
