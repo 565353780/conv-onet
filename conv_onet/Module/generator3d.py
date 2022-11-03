@@ -10,11 +10,10 @@ from tqdm import trange
 from torch import autograd
 
 from conv_onet.Lib.libmcubes.mcubes import marching_cubes
-from conv_onet.Lib.libmise.mise import MISE
 from conv_onet.Lib.libsimplify.simplify import simplify_mesh
 
 from conv_onet.Method.common import \
-    make_3d_grid, normalize_coord, add_key, coord2index, decide_total_volume_range, update_reso
+    normalize_coord, add_key, coord2index, decide_total_volume_range, update_reso
 from conv_onet.Method.patch import getPatchArray
 
 
@@ -30,7 +29,6 @@ class Generator3D(object):
         refinement_step (int): number of refinement steps
         device (device): pytorch device
         resolution0 (int): start resolution for MISE
-        upsampling steps (int): number of upsampling steps
         with_normals (bool): whether normals should be estimated
         padding (float): how much padding should be used for MISE
         sample (bool): whether z should be sampled
@@ -46,7 +44,6 @@ class Generator3D(object):
                  refinement_step=0,
                  device=None,
                  resolution0=16,
-                 upsampling_steps=3,
                  with_normals=False,
                  padding=0.1,
                  sample=False,
@@ -59,7 +56,6 @@ class Generator3D(object):
         self.threshold = threshold
         self.device = device
         self.resolution0 = resolution0
-        self.upsampling_steps = upsampling_steps
         self.with_normals = with_normals
         self.padding = padding
         self.sample = sample
@@ -85,11 +81,9 @@ class Generator3D(object):
         query_vol_metric = cfg['data']['padding'] + 1
         unit_size = cfg['data']['unit_size']
         recep_field = 2**(
-            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] +
-            2)
+            cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
 
-        depth = cfg['model']['encoder_kwargs']['unet3d_kwargs'][
-            'num_levels']
+        depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
 
         vol_info = decide_total_volume_range(query_vol_metric, recep_field,
                                              unit_size, depth)
@@ -111,7 +105,6 @@ class Generator3D(object):
             device=device,
             threshold=cfg['test']['threshold'],
             resolution0=cfg['generation']['resolution_0'],
-            upsampling_steps=cfg['generation']['upsampling_steps'],
             sample=cfg['generation']['use_sampling'],
             refinement_step=cfg['generation']['refinement_step'],
             simplify_nfaces=cfg['generation']['simplify_nfaces'],
@@ -119,86 +112,6 @@ class Generator3D(object):
             vol_info=vol_info,
             vol_bound=vol_bound,
         )
-
-    def generate_mesh(self, data):
-        ''' Generates the output mesh.
-
-        Args:
-            data (tensor): data tensor
-        '''
-        self.model.eval()
-        device = self.device
-        stats_dict = {}
-
-        inputs = data.get('inputs', torch.empty(1, 0)).to(device)
-        kwargs = {}
-
-        t0 = time.time()
-
-        # obtain features for all crops
-        if self.vol_bound is not None:
-            self.get_crop_bound(inputs)
-            c = self.encode_crop(inputs, device)
-        else:  # input the entire volume
-            inputs = add_key(inputs,
-                             data.get('inputs.ind'),
-                             'points',
-                             'index',
-                             device=device)
-            t0 = time.time()
-            with torch.no_grad():
-                c = self.model.encode_inputs(inputs)
-        stats_dict['time (encode inputs)'] = time.time() - t0
-
-        mesh = self.generate_from_latent(c, stats_dict=stats_dict, **kwargs)
-        return mesh, stats_dict
-
-    def generate_from_latent(self, c=None, stats_dict={}, **kwargs):
-        ''' Generates mesh from latent.
-            Works for shapes normalized to a unit cube
-
-        Args:
-            c (tensor): latent conditioned code c
-            stats_dict (dict): stats dictionary
-        '''
-        threshold = np.log(self.threshold) - np.log(1. - self.threshold)
-
-        t0 = time.time()
-        # Compute bounding box size
-        box_size = 1 + self.padding
-
-        # Shortcut
-        if self.upsampling_steps == 0:
-            nx = self.resolution0
-            pointsf = box_size * make_3d_grid((-0.5, ) * 3, (0.5, ) * 3,
-                                              (nx, ) * 3)
-
-            values = self.eval_points(pointsf, c, **kwargs).cpu().numpy()
-            value_grid = values.reshape(nx, nx, nx)
-        else:
-            mesh_extractor = MISE(self.resolution0, self.upsampling_steps,
-                                  threshold)
-
-            points = mesh_extractor.query()
-            while points.shape[0] != 0:
-                # Query points
-                pointsf = points / mesh_extractor.resolution
-                # Normalize to bounding box
-                pointsf = box_size * (pointsf - 0.5)
-                pointsf = torch.FloatTensor(pointsf).to(self.device)
-                # Evaluate model and update
-                values = self.eval_points(pointsf, c, **kwargs).cpu().numpy()
-                values = values.astype(np.float64)
-                mesh_extractor.update(points, values)
-                points = mesh_extractor.query()
-
-            value_grid = mesh_extractor.to_dense()
-
-        # Extract mesh
-        stats_dict['time (eval points)'] = time.time() - t0
-
-        mesh = self.extract_mesh(value_grid, c, stats_dict=stats_dict)
-        return mesh
 
     def generate_mesh_sliding(self, data):
         ''' Generates the output mesh in sliding-window manner.
@@ -224,7 +137,7 @@ class Generator3D(object):
         n_crop_axis = self.vol_bound['axis_n_crop']
 
         # occupancy in each direction
-        r = nx * 2**self.upsampling_steps
+        r = nx * 2**0
         occ_values = np.array([]).reshape(r, r, 0)
         occ_values_y = np.array([]).reshape(r, 0, r * n_crop_axis[2])
         occ_values_x = np.array([]).reshape(0, r * n_crop_axis[1],
@@ -239,35 +152,13 @@ class Generator3D(object):
             bb_min = self.vol_bound['query_vol'][i][0]
             bb_max = bb_min + self.vol_bound['query_crop_size']
 
-            if self.upsampling_steps == 0:
-                t = (bb_max - bb_min) / nx  # inteval
-                pp = np.mgrid[bb_min[0]:bb_max[0]:t[0],
-                              bb_min[1]:bb_max[1]:t[1],
-                              bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
-                pp = torch.from_numpy(pp).to(device)
-                values = self.eval_points(pp, c, vol_bound=vol_bound,
-                                          **kwargs).detach().cpu().numpy()
-                values = values.reshape(nx, nx, nx)
-            else:
-                mesh_extractor = MISE(self.resolution0, self.upsampling_steps,
-                                      threshold)
-                points = mesh_extractor.query()
-                while points.shape[0] != 0:
-                    pp = points / mesh_extractor.resolution
-                    pp = pp * (bb_max - bb_min) + bb_min
-                    pp = torch.from_numpy(pp).to(self.device)
-
-                    values = self.eval_points(pp,
-                                              c,
-                                              vol_bound=vol_bound,
-                                              **kwargs).detach().cpu().numpy()
-                    values = values.astype(np.float64)
-                    mesh_extractor.update(points, values)
-                    points = mesh_extractor.query()
-
-                values = mesh_extractor.to_dense()
-                # MISE consider one more voxel around boundary, remove
-                values = values[:-1, :-1, :-1]
+            t = (bb_max - bb_min) / nx  # inteval
+            pp = np.mgrid[bb_min[0]:bb_max[0]:t[0], bb_min[1]:bb_max[1]:t[1],
+                          bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
+            pp = torch.from_numpy(pp).to(device)
+            values = self.eval_points(pp, c, vol_bound=vol_bound,
+                                      **kwargs).detach().cpu().numpy()
+            values = values.reshape(nx, nx, nx)
 
             # concatenate occ_value along every axis
             # along z axis
@@ -457,8 +348,7 @@ class Generator3D(object):
             bb_min = self.vol_bound['query_vol'][:, 0].min(axis=0)
             bb_max = self.vol_bound['query_vol'][:, 1].max(axis=0)
             mc_unit = max(bb_max - bb_min) / (
-                self.vol_bound['axis_n_crop'].max() * self.resolution0 *
-                2**self.upsampling_steps)
+                self.vol_bound['axis_n_crop'].max() * self.resolution0 * 2**0)
             vertices = vertices * mc_unit + bb_min
         else:
             # Normalize to bounding box

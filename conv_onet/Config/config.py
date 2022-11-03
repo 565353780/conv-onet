@@ -16,8 +16,8 @@ DATA = {
     'pointcloud_noise': 0.0,
     'padding': 0.1,
     'unit_size': 0.02,  # define the size of a voxel, in meter
-    #  'query_vol_size': 90,  # query crop in voxel
-    'query_vol_size': 9,  # query crop in voxel
+    'query_vol_size': 90,  # query crop in voxel
+    #  'query_vol_size': 9,  # query crop in voxel
     'points_file': 'points_iou.npz',
     'points_iou_file': 'points_iou.npz',
 }
@@ -63,7 +63,7 @@ TEST = {
     'eval_mesh': True,
     'eval_pointcloud': False,
     'remove_wall': False,
-    #  'model_file': './room_grid64.pt'
+    'model_file': './room_grid64.pt'
 }
 
 GENERATION = {
@@ -71,7 +71,6 @@ GENERATION = {
     'refinement_step': 0,
     'use_sampling': False,
     'resolution_0': 128,
-    'upsampling_steps': 0,
     'simplify_nfaces': None,
     'latent_number': 4,
     'latent_H': 8,
