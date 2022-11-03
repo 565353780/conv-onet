@@ -221,7 +221,6 @@ class Shapes3dDataset(Dataset):
         query_vol_size = self.cfg['data']['query_vol_size']
         unit_size = self.cfg['data']['unit_size']
         field_name = self.cfg['data']['pointcloud_file']
-        plane_type = self.cfg['model']['encoder_kwargs']['plane_type']
         recep_field = 2**(
             self.cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
             + 2)
@@ -257,7 +256,7 @@ class Shapes3dDataset(Dataset):
             query_vol = self.total_query_vol
 
         vol_info = {
-            'plane_type': plane_type,
+            'plane_type': ['grid'],
             'reso': reso,
             'input_vol': input_vol,
             'query_vol': query_vol

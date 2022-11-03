@@ -96,7 +96,7 @@ class Generator3D(object):
         vol_bound = {
             'query_crop_size': query_vol_size,
             'input_crop_size': input_vol_size,
-            'fea_type': cfg['model']['encoder_kwargs']['plane_type'],
+            'fea_type': ['grid'],
             'reso': grid_reso
         }
 

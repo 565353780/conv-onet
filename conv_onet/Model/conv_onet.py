@@ -73,18 +73,12 @@ class ConvolutionalOccupancyNetwork(nn.Module):
             decoder_kwargs['pos_encoding'] = cfg['model']['pos_encoding']
 
         # update the feature volume/plane resolution
-        fea_type = cfg['model']['encoder_kwargs']['plane_type']
         recep_field = 2**(
             cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
         reso = cfg['data']['query_vol_size'] + recep_field - 1
 
         depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
-        if 'grid' in fea_type:
-            encoder_kwargs['grid_resolution'] = update_reso(
-                reso, depth)
-        if bool(set(fea_type) & set(['xz', 'xy', 'yz'])):
-            encoder_kwargs['plane_resolution'] = update_reso(
-                reso, depth)
+        encoder_kwargs['grid_resolution'] = update_reso(reso, depth)
 
         decoder = decoder_dict[decoder](dim=dim,
                                         c_dim=c_dim,

@@ -32,7 +32,6 @@ MODEL = {
     },
     'encoder_kwargs': {
         'hidden_dim': 32,
-        'plane_type': ['grid'],
         'unet3d': True,
         'unet3d_kwargs': {
             'num_levels': 4,  # define the receptive field, 3 -> 32, 4 -> 64
