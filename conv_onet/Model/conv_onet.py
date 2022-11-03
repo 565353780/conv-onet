@@ -55,10 +55,7 @@ class ConvolutionalOccupancyNetwork(nn.Module):
         depth = cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
         encoder_kwargs['grid_resolution'] = update_reso(reso, depth)
 
-        decoder = PatchLocalDecoder(dim=dim,
-                                    c_dim=c_dim,
-                                    padding=padding,
-                                    **decoder_kwargs)
+        decoder = PatchLocalDecoder(dim=dim, c_dim=c_dim, **decoder_kwargs)
 
         encoder = PatchLocalPoolPointnet(dim=dim,
                                          c_dim=c_dim,
