@@ -17,7 +17,7 @@ class IndexField(Field):
         '''
         return idx
 
-    def check_complete(self, filed):
+    def check_complete(self, field):
         ''' Check if field is complete.
 
         Args:
