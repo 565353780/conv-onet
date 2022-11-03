@@ -23,7 +23,6 @@ class PatchLocalDecoder(nn.Module):
         local_coord (bool): whether to use local coordinate
         unit_size (float): defined voxel unit size for local system
         pos_encoding (str): method for the positional encoding, linear|sin_cos
-        padding (float): conventional padding paramter of ONet for unit cube, so [-0.5, 0.5] -> [-0.55, 0.55]
 
     '''
 
@@ -36,8 +35,7 @@ class PatchLocalDecoder(nn.Module):
                  sample_mode='bilinear',
                  local_coord=False,
                  pos_encoding='linear',
-                 unit_size=0.1,
-                 padding=0.1):
+                 unit_size=0.1):
         super().__init__()
         self.c_dim = c_dim
         self.n_blocks = n_blocks
