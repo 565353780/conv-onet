@@ -282,7 +282,7 @@ def normalize_3d_coordinate(p, padding=0.1):
     return p_nor
 
 
-def normalize_coord(p, vol_range, plane='xz'):
+def normalize_coord(p, vol_range):
     ''' Normalize coordinate to [0, 1] for sliding-window experiments
 
     Args:
@@ -293,16 +293,7 @@ def normalize_coord(p, vol_range, plane='xz'):
     p[:, 0] = (p[:, 0] - vol_range[0][0]) / (vol_range[1][0] - vol_range[0][0])
     p[:, 1] = (p[:, 1] - vol_range[0][1]) / (vol_range[1][1] - vol_range[0][1])
     p[:, 2] = (p[:, 2] - vol_range[0][2]) / (vol_range[1][2] - vol_range[0][2])
-
-    if plane == 'xz':
-        x = p[:, [0, 2]]
-    elif plane == 'xy':
-        x = p[:, [0, 1]]
-    elif plane == 'yz':
-        x = p[:, [1, 2]]
-    else:
-        x = p
-    return x
+    return p
 
 
 def coordinate2index(x, reso, coord_type='2d'):
@@ -323,7 +314,7 @@ def coordinate2index(x, reso, coord_type='2d'):
     return index
 
 
-def coord2index(p, vol_range, reso=None, plane='xz'):
+def coord2index(p, vol_range, reso=None):
     ''' Normalize coordinate to [0, 1] for sliding-window experiments.
         Corresponds to our 3D model
 
@@ -334,7 +325,7 @@ def coord2index(p, vol_range, reso=None, plane='xz'):
         plane (str): feature type, ['xz', 'xy', 'yz'] - canonical planes; ['grid'] - grid volume
     '''
     # normalize to [0, 1]
-    x = normalize_coord(p, vol_range, plane=plane)
+    x = normalize_coord(p, vol_range)
 
     if isinstance(x, np.ndarray):
         x = np.floor(x * reso).astype(int)
