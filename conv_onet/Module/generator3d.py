@@ -96,7 +96,6 @@ class Generator3D(object):
         vol_bound = {
             'query_crop_size': query_vol_size,
             'input_crop_size': input_vol_size,
-            'fea_type': ['grid'],
             'reso': grid_reso
         }
 
@@ -155,38 +154,32 @@ class Generator3D(object):
             vol_bound = self.vol_bound
 
         index = {}
-        for fea in self.vol_bound['fea_type']:
-            # crop the input point cloud
-            mask_x = (inputs[:, :, 0] >= vol_bound['input_vol'][0][0]) &\
-                    (inputs[:, :, 0] < vol_bound['input_vol'][1][0])
-            mask_y = (inputs[:, :, 1] >= vol_bound['input_vol'][0][1]) &\
-                    (inputs[:, :, 1] < vol_bound['input_vol'][1][1])
-            mask_z = (inputs[:, :, 2] >= vol_bound['input_vol'][0][2]) &\
-                    (inputs[:, :, 2] < vol_bound['input_vol'][1][2])
-            mask = mask_x & mask_y & mask_z
+        # crop the input point cloud
+        mask_x = (inputs[:, :, 0] >= vol_bound['input_vol'][0][0]) &\
+                (inputs[:, :, 0] < vol_bound['input_vol'][1][0])
+        mask_y = (inputs[:, :, 1] >= vol_bound['input_vol'][0][1]) &\
+                (inputs[:, :, 1] < vol_bound['input_vol'][1][1])
+        mask_z = (inputs[:, :, 2] >= vol_bound['input_vol'][0][2]) &\
+                (inputs[:, :, 2] < vol_bound['input_vol'][1][2])
+        mask = mask_x & mask_y & mask_z
 
-            p_input = inputs[mask]
-            if p_input.shape[0] == 0:  # no points in the current crop
-                p_input = inputs.squeeze()
-                ind = coord2index(p_input.clone(),
-                                  vol_bound['input_vol'],
-                                  reso=self.vol_bound['reso'],
-                                  plane=fea)
-                if fea == 'grid':
-                    ind[~mask] = self.vol_bound['reso']**3
-                else:
-                    ind[~mask] = self.vol_bound['reso']**2
-            else:
-                ind = coord2index(p_input.clone(),
-                                  vol_bound['input_vol'],
-                                  reso=self.vol_bound['reso'],
-                                  plane=fea)
-            index[fea] = ind.unsqueeze(0)
-            input_cur = add_key(p_input.unsqueeze(0),
-                                index,
-                                'points',
-                                'index',
-                                device=device)
+        p_input = inputs[mask]
+        if p_input.shape[0] == 0:  # no points in the current crop
+            p_input = inputs.squeeze()
+            ind = coord2index(p_input.clone(),
+                              vol_bound['input_vol'],
+                              reso=self.vol_bound['reso'])
+            ind[~mask] = self.vol_bound['reso']**3
+        else:
+            ind = coord2index(p_input.clone(),
+                              vol_bound['input_vol'],
+                              reso=self.vol_bound['reso'])
+        index['grid'] = ind.unsqueeze(0)
+        input_cur = add_key(p_input.unsqueeze(0),
+                            index,
+                            'points',
+                            'index',
+                            device=device)
 
         with torch.no_grad():
             c = self.model.encode_inputs(input_cur)
@@ -207,11 +200,9 @@ class Generator3D(object):
         pi_in = pi.unsqueeze(0)
         pi_in = {'p': pi_in}
         p_n = {}
-        for key in self.vol_bound['fea_type']:
-            # projected coordinates normalized to the range of [0, 1]
-            p_n[key] = normalize_coord(pi.clone(),
-                                       vol_bound['input_vol'],
-                                       plane=key).unsqueeze(0).to(self.device)
+        # projected coordinates normalized to the range of [0, 1]
+        p_n['grid'] = normalize_coord(
+            pi.clone(), vol_bound['input_vol']).unsqueeze(0).to(self.device)
         pi_in['p_n'] = p_n
 
         # predict occupancy of the current crop
@@ -231,26 +222,11 @@ class Generator3D(object):
         p_split = torch.split(p, self.points_batch_size)
         occ_hats = []
         for pi in p_split:
-            if self.vol_bound is not None:  # sliding-window manner
-                occ_hat = self.predict_crop_occ(pi,
-                                                c,
-                                                vol_bound=vol_bound,
-                                                **kwargs)
-                occ_hats.append(occ_hat)
-            else:  # entire scene
-                pi_in = pi.unsqueeze(0).to(self.device)
-                pi_in = {'p': pi_in}
-                p_n = {}
-                for key in c.keys():
-                    # normalized to the range of [0, 1]
-                    p_n[key] = normalize_coord(pi.clone(),
-                                               self.input_vol,
-                                               plane=key).unsqueeze(0).to(
-                                                   self.device)
-                pi_in['p_n'] = p_n
-                with torch.no_grad():
-                    occ_hat = self.model.decode(pi_in, c, **kwargs).logits
-                occ_hats.append(occ_hat.squeeze(0).detach().cpu())
+            occ_hat = self.predict_crop_occ(pi,
+                                            c,
+                                            vol_bound=vol_bound,
+                                            **kwargs)
+            occ_hats.append(occ_hat)
 
         occ_hat = torch.cat(occ_hats, dim=0)
         return occ_hat
