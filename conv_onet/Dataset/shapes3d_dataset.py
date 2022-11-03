@@ -46,7 +46,6 @@ class Shapes3dDataset(Dataset):
                  dataset_folder,
                  fields,
                  split=None,
-                 categories=None,
                  no_except=True,
                  transform=None,
                  cfg=None):
@@ -56,7 +55,6 @@ class Shapes3dDataset(Dataset):
             dataset_folder (str): dataset folder
             fields (dict): dictionary of fields
             split (str): which split is used
-            categories (list): list of categories to use
             no_except (bool): no exception
             transform (callable): transformation applied to data points
             cfg (yaml): config file
@@ -68,14 +66,6 @@ class Shapes3dDataset(Dataset):
         self.transform = transform
         self.cfg = cfg
 
-        # If categories is None, use all subfolders
-        if categories is None:
-            categories = os.listdir(dataset_folder)
-            categories = [
-                c for c in categories
-                if os.path.isdir(os.path.join(dataset_folder, c))
-            ]
-
         # Read metadata file
         metadata_file = os.path.join(dataset_folder, 'metadata.yaml')
 
@@ -83,38 +73,36 @@ class Shapes3dDataset(Dataset):
             with open(metadata_file, 'r') as f:
                 self.metadata = yaml.load(f, Loader=yaml.FullLoader)
         else:
-            self.metadata = {c: {'id': c, 'name': 'n/a'} for c in categories}
+            self.metadata = {'': {'id': '', 'name': 'n/a'}}
 
         # Set index
-        for c_idx, c in enumerate(categories):
-            self.metadata[c]['idx'] = c_idx
+        self.metadata['']['idx'] = 0
 
         # Get all models
         self.models = []
-        for c_idx, c in enumerate(categories):
-            subpath = os.path.join(dataset_folder, c)
-            if not os.path.isdir(subpath):
-                print("[WARN][Shapes3dDataset::__init__]")
-                print("\tCategory " + c + " does not exist in dataset.")
+        subpath = os.path.join(dataset_folder, '')
+        if not os.path.isdir(subpath):
+            print("[WARN][Shapes3dDataset::__init__]")
+            print("\tCategory does not exist in dataset.")
 
-            if split is None:
-                self.models += [{
-                    'category': c,
-                    'model': m
-                } for m in [
-                    d for d in os.listdir(subpath)
-                    if (os.path.isdir(os.path.join(subpath, d)) and d != '')
-                ]]
+        if split is None:
+            self.models += [{
+                'category': '',
+                'model': m
+            } for m in [
+                d for d in os.listdir(subpath)
+                if (os.path.isdir(os.path.join(subpath, d)) and d != '')
+            ]]
 
-            else:
-                split_file = os.path.join(subpath, split + '.lst')
-                with open(split_file, 'r') as f:
-                    models_c = f.read().split('\n')
+        else:
+            split_file = os.path.join(subpath, split + '.lst')
+            with open(split_file, 'r') as f:
+                models_c = f.read().split('\n')
 
-                if '' in models_c:
-                    models_c.remove('')
+            if '' in models_c:
+                models_c.remove('')
 
-                self.models += [{'category': c, 'model': m} for m in models_c]
+            self.models += [{'category': '', 'model': m} for m in models_c]
 
         # precompute
         self.split = split
@@ -133,7 +121,6 @@ class Shapes3dDataset(Dataset):
     @classmethod
     def fromConfig(cls, mode, cfg, return_idx=False):
         dataset_folder = cfg['data']['path']
-        categories = cfg['data']['classes']
 
         # Get split
         splits = {
@@ -160,7 +147,6 @@ class Shapes3dDataset(Dataset):
         return cls(dataset_folder,
                    fields,
                    split=split,
-                   categories=categories,
                    cfg=cfg)
 
     def __len__(self):
