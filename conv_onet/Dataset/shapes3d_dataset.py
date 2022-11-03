@@ -121,7 +121,8 @@ class Shapes3dDataset(Dataset):
         # proper resolution for feature plane/volume of the ENTIRE scene
         unit_size = self.cfg['data']['unit_size']
         recep_field = 2**(
-            self.cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels'] + 2)
+            self.cfg['model']['encoder_kwargs']['unet3d_kwargs']['num_levels']
+            + 2)
 
         self.depth = self.cfg['model']['encoder_kwargs']['unet3d_kwargs'][
             'num_levels']
