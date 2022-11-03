@@ -21,6 +21,7 @@ class ConvolutionalOccupancyNetwork(nn.Module):
                                          local_coord=True,
                                          unit_size=unit_size).to(device)
 
+        # update the feature volume/plane resolution
         reso = query_vol_size + 2**6 - 1
         grid_resolution = update_reso(reso)
         self.encoder = PatchLocalPoolPointnet(c_dim=32,
@@ -28,15 +29,13 @@ class ConvolutionalOccupancyNetwork(nn.Module):
                                               grid_resolution=grid_resolution,
                                               padding=padding,
                                               local_coord=True,
-                                              unit_size=unit_size)
+                                              unit_size=unit_size).to(device)
 
         self._device = device
         return
 
     @classmethod
     def fromConfig(cls, cfg, device=None):
-        # update the feature volume/plane resolution
-
         return cls(cfg['data']['padding'], cfg['data']['unit_size'],
                    cfg['data']['query_vol_size'], device)
 

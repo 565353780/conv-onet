@@ -269,7 +269,6 @@ class Generator3D(object):
         # Some shorthands
         n_x, n_y, n_z = occ_hat.shape
         assert (n_x == n_y == n_z)
-        # threshold = np.log(self.threshold) - np.log(1. - self.threshold)
         threshold = self.threshold
 
         # Vertex parameter
@@ -327,8 +326,6 @@ class Generator3D(object):
             stats_dict (dict): stats dictionary
         '''
         # Some short hands
-        n_x, n_y, n_z = occ_hat.shape
-        box_size = 1 + self.padding
         threshold = np.log(self.threshold) - np.log(1. - self.threshold)
         # Make sure that mesh is watertight
         t0 = time.time()
@@ -340,17 +337,12 @@ class Generator3D(object):
         # # Undo padding
         vertices -= 1
 
-        if self.vol_bound is not None:
-            # Scale the mesh back to its original metric
-            bb_min = self.vol_bound['query_vol'][:, 0].min(axis=0)
-            bb_max = self.vol_bound['query_vol'][:, 1].max(axis=0)
-            mc_unit = max(bb_max - bb_min) / (
-                self.vol_bound['axis_n_crop'].max() * self.resolution0)
-            vertices = vertices * mc_unit + bb_min
-        else:
-            # Normalize to bounding box
-            vertices /= np.array([n_x - 1, n_y - 1, n_z - 1])
-            vertices = box_size * (vertices - 0.5)
+        # Scale the mesh back to its original metric
+        bb_min = self.vol_bound['query_vol'][:, 0].min(axis=0)
+        bb_max = self.vol_bound['query_vol'][:, 1].max(axis=0)
+        mc_unit = max(bb_max - bb_min) / (
+            self.vol_bound['axis_n_crop'].max() * self.resolution0)
+        vertices = vertices * mc_unit + bb_min
 
         # Estimate normals if needed
         if self.with_normals and not vertices.shape[0] == 0:
