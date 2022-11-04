@@ -14,7 +14,7 @@ DATA = {
     'pointcloud_n': 200000,
     'pointcloud_noise': 0.0,
     'padding': 0.1,
-    'unit_size': 0.02,  # define the size of a voxel, in meter
+    'unit_size': 0.002,  # define the size of a voxel, in meter
     'query_vol_size': 90,  # query crop in voxel
     #  'query_vol_size': 9,  # query crop in voxel
     'points_file': 'points_iou.npz',
