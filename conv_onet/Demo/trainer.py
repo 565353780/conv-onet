@@ -62,7 +62,7 @@ def demo():
 
     model = ConvolutionalOccupancyNetwork.fromConfig(cfg, device)
 
-    generator = Generator3D.fromConfig(model, cfg, device)
+    generator = Generator3D.fromConfig(model, cfg)
 
     # Intialize training
     optimizer = optim.Adam(model.parameters(), lr=1e-4)

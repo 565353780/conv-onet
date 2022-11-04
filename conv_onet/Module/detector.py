@@ -31,9 +31,7 @@ class Detector(object):
 
         self.checkpoint_io = CheckpointIO(out_dir, model=self.model)
 
-        self.generator = Generator3D.fromConfig(self.model,
-                                                self.cfg,
-                                                device=self.device)
+        self.generator = Generator3D.fromConfig(self.model, self.cfg)
 
         self.loadModel(self.cfg['test']['model_file'])
         return

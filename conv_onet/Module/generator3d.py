@@ -15,68 +15,47 @@ from conv_onet.Method.patch import getPatchArray
 
 
 class Generator3D(object):
-    '''  Generator class for Occupancy Networks.
-
-    It provides functions to generate the final mesh as well refining options.
-
-    Args:
-        model (nn.Module): trained Occupancy Network model
-        points_batch_size (int): batch size for points evaluation
-        threshold (float): threshold value
-        device (device): pytorch device
-        resolution0 (int): start resolution for MISE
-        padding (float): how much padding should be used for MISE
-        vol_info (dict): volume infomation
-        vol_bound (dict): volume boundary
-    '''
 
     def __init__(self,
                  model,
-                 threshold=0.5,
-                 device=None,
-                 resolution0=16,
-                 padding=0.1,
-                 vol_info=None,
-                 vol_bound=None):
-        self.model = model.to(device)
+                 padding,
+                 unit_size,
+                 query_vol_size,
+                 device=torch.device('cuda'),
+                 threshold=0.2,
+                 resolution0=128):
         self.points_batch_size = 100000
+
+        self.model = model.to(device)
         self.threshold = threshold
         self.device = device
         self.resolution0 = resolution0
         self.padding = padding
 
-        self.vol_bound = vol_bound
-        if vol_info is not None:
-            self.input_vol, _, _ = vol_info
-        return
-
-    @classmethod
-    def fromConfig(cls, model, cfg, device):
-        padding = cfg['data']['padding']
-        unit_size = cfg['data']['unit_size']
-        query_vol_size = cfg['data']['query_vol_size']
-
         query_vol_metric = padding + 1
-        vol_info = decide_total_volume_range(query_vol_metric, 2**6, unit_size)
+
+        self.input_vol, _, _ = decide_total_volume_range(
+            query_vol_metric, 2**6, unit_size)
 
         grid_reso = query_vol_size + 2**6 - 1
         grid_reso = update_reso(grid_reso)
         query_vol_size = query_vol_size * unit_size
         input_vol_size = grid_reso * unit_size
 
-        vol_bound = {
+        self.vol_bound = {
             'query_crop_size': query_vol_size,
             'input_crop_size': input_vol_size,
             'reso': grid_reso
         }
+        return
 
-        return cls(model,
-                   device=device,
-                   threshold=0.2,
-                   resolution0=128,
-                   padding=padding,
-                   vol_info=vol_info,
-                   vol_bound=vol_bound)
+    @classmethod
+    def fromConfig(cls, model, cfg):
+        padding = cfg['data']['padding']
+        unit_size = cfg['data']['unit_size']
+        query_vol_size = cfg['data']['query_vol_size']
+
+        return cls(model, padding, unit_size, query_vol_size)
 
     def get_crop_bound(self, inputs):
         ''' Divide a scene into crops, get boundary for each crop
