@@ -45,12 +45,10 @@ class Trainer(object):
             cfg (dict): imported yaml config
             device (device): pytorch device
         '''
-        threshold = cfg['test']['threshold']
-
         return cls(model,
                    optimizer,
                    device=device,
-                   threshold=threshold,
+                   threshold=0.2,
                    eval_sample=cfg['training']['eval_sample'])
 
     def evaluate(self, val_loader):
