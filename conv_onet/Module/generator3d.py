@@ -5,12 +5,9 @@ import time
 import torch
 import trimesh
 import numpy as np
-import torch.optim as optim
 from tqdm import trange
-from torch import autograd
 
 from conv_onet.Lib.libmcubes.mcubes import marching_cubes
-from conv_onet.Lib.libsimplify.simplify import simplify_mesh
 
 from conv_onet.Method.common import \
     normalize_coord, add_key, coord2index, decide_total_volume_range, update_reso
@@ -26,42 +23,28 @@ class Generator3D(object):
         model (nn.Module): trained Occupancy Network model
         points_batch_size (int): batch size for points evaluation
         threshold (float): threshold value
-        refinement_step (int): number of refinement steps
         device (device): pytorch device
         resolution0 (int): start resolution for MISE
-        with_normals (bool): whether normals should be estimated
         padding (float): how much padding should be used for MISE
-        sample (bool): whether z should be sampled
         vol_info (dict): volume infomation
         vol_bound (dict): volume boundary
-        simplify_nfaces (int): number of faces the mesh should be simplified to
     '''
 
     def __init__(self,
                  model,
-                 points_batch_size=100000,
                  threshold=0.5,
-                 refinement_step=0,
                  device=None,
                  resolution0=16,
-                 with_normals=False,
                  padding=0.1,
-                 sample=False,
                  vol_info=None,
-                 vol_bound=None,
-                 simplify_nfaces=None):
+                 vol_bound=None):
         self.model = model.to(device)
-        self.points_batch_size = points_batch_size
-        self.refinement_step = refinement_step
+        self.points_batch_size = 100000
         self.threshold = threshold
         self.device = device
         self.resolution0 = resolution0
-        self.with_normals = with_normals
         self.padding = padding
-        self.sample = sample
-        self.simplify_nfaces = simplify_nfaces
 
-        # for pointcloud_crop
         self.vol_bound = vol_bound
         if vol_info is not None:
             self.input_vol, _, _ = vol_info
@@ -69,25 +52,16 @@ class Generator3D(object):
 
     @classmethod
     def fromConfig(cls, model, cfg, device):
-        ''' Returns the generator object.
-
-        Args:
-            model (nn.Module): Occupancy Network model
-            cfg (dict): imported yaml config
-            device (device): pytorch device
-        '''
-
-        # calculate the volume boundary
-        query_vol_metric = cfg['data']['padding'] + 1
+        padding = cfg['data']['padding']
         unit_size = cfg['data']['unit_size']
+        query_vol_size = cfg['data']['query_vol_size']
 
-        recep_field = 2**6
-        vol_info = decide_total_volume_range(query_vol_metric, recep_field,
-                                             unit_size)
+        query_vol_metric = padding + 1
+        vol_info = decide_total_volume_range(query_vol_metric, 2**6, unit_size)
 
-        grid_reso = cfg['data']['query_vol_size'] + recep_field - 1
+        grid_reso = query_vol_size + 2**6 - 1
         grid_reso = update_reso(grid_reso)
-        query_vol_size = cfg['data']['query_vol_size'] * unit_size
+        query_vol_size = query_vol_size * unit_size
         input_vol_size = grid_reso * unit_size
 
         vol_bound = {
@@ -96,18 +70,13 @@ class Generator3D(object):
             'reso': grid_reso
         }
 
-        return cls(
-            model,
-            device=device,
-            threshold=cfg['test']['threshold'],
-            resolution0=cfg['generation']['resolution_0'],
-            sample=cfg['generation']['use_sampling'],
-            refinement_step=cfg['generation']['refinement_step'],
-            simplify_nfaces=cfg['generation']['simplify_nfaces'],
-            padding=cfg['data']['padding'],
-            vol_info=vol_info,
-            vol_bound=vol_bound,
-        )
+        return cls(model,
+                   device=device,
+                   threshold=0.2,
+                   resolution0=128,
+                   padding=padding,
+                   vol_info=vol_info,
+                   vol_bound=vol_bound)
 
     def get_crop_bound(self, inputs):
         ''' Divide a scene into crops, get boundary for each crop
@@ -255,68 +224,6 @@ class Generator3D(object):
         normals = np.concatenate(normals, axis=0)
         return normals
 
-    def refine_mesh(self, mesh, occ_hat, c=None):
-        ''' Refines the predicted mesh.
-
-        Args:
-            mesh (trimesh object): predicted mesh
-            occ_hat (tensor): predicted occupancy grid
-            c (tensor): latent conditioned code c
-        '''
-
-        self.model.eval()
-
-        # Some shorthands
-        n_x, n_y, n_z = occ_hat.shape
-        assert (n_x == n_y == n_z)
-        threshold = self.threshold
-
-        # Vertex parameter
-        v0 = torch.FloatTensor(mesh.vertices).to(self.device)
-        v = torch.nn.Parameter(v0.clone())
-
-        # Faces of mesh
-        faces = torch.LongTensor(mesh.faces).to(self.device)
-
-        # Start optimization
-        optimizer = optim.RMSprop([v], lr=1e-4)
-
-        for _ in trange(self.refinement_step):
-            optimizer.zero_grad()
-
-            # Loss
-            face_vertex = v[faces]
-            eps = np.random.dirichlet((0.5, 0.5, 0.5), size=faces.shape[0])
-            eps = torch.FloatTensor(eps).to(self.device)
-            face_point = (face_vertex * eps[:, :, None]).sum(dim=1)
-
-            face_v1 = face_vertex[:, 1, :] - face_vertex[:, 0, :]
-            face_v2 = face_vertex[:, 2, :] - face_vertex[:, 1, :]
-            face_normal = torch.cross(face_v1, face_v2)
-            face_normal = face_normal / \
-                (face_normal.norm(dim=1, keepdim=True) + 1e-10)
-            face_value = torch.sigmoid(
-                self.model.decode(face_point.unsqueeze(0), c).logits)
-            normal_target = -autograd.grad([face_value.sum()], [face_point],
-                                           create_graph=True)[0]
-
-            normal_target = \
-                normal_target / \
-                (normal_target.norm(dim=1, keepdim=True) + 1e-10)
-            loss_target = (face_value - threshold).pow(2).mean()
-            loss_normal = \
-                (face_normal - normal_target).pow(2).sum(dim=1).mean()
-
-            loss = loss_target + 0.01 * loss_normal
-
-            # Update
-            loss.backward()
-            optimizer.step()
-
-        mesh.vertices = v.data.cpu().numpy()
-
-        return mesh
-
     def extract_mesh(self, occ_hat, c=None, stats_dict=dict()):
         ''' Extracts the mesh from the predicted occupancy grid.
 
@@ -340,41 +247,19 @@ class Generator3D(object):
         # Scale the mesh back to its original metric
         bb_min = self.vol_bound['query_vol'][:, 0].min(axis=0)
         bb_max = self.vol_bound['query_vol'][:, 1].max(axis=0)
-        mc_unit = max(bb_max - bb_min) / (
-            self.vol_bound['axis_n_crop'].max() * self.resolution0)
+        mc_unit = max(bb_max - bb_min) / (self.vol_bound['axis_n_crop'].max() *
+                                          self.resolution0)
         vertices = vertices * mc_unit + bb_min
-
-        # Estimate normals if needed
-        if self.with_normals and not vertices.shape[0] == 0:
-            t0 = time.time()
-            normals = self.estimate_normals(vertices, c)
-            stats_dict['time (normals)'] = time.time() - t0
-
-        else:
-            normals = None
 
         # Create mesh
         mesh = trimesh.Trimesh(vertices,
                                triangles,
-                               vertex_normals=normals,
+                               vertex_normals=None,
                                process=False)
 
         # Directly return if mesh is empty
         if vertices.shape[0] == 0:
             return mesh
-
-        # TODO: normals are lost here
-        if self.simplify_nfaces is not None:
-            t0 = time.time()
-            mesh = simplify_mesh(mesh, self.simplify_nfaces, 5.)
-            stats_dict['time (simplify)'] = time.time() - t0
-
-        # Refine mesh
-        if self.refinement_step > 0:
-            t0 = time.time()
-            self.refine_mesh(mesh, occ_hat, c)
-            stats_dict['time (refine)'] = time.time() - t0
-
         return mesh
 
     def generate_mesh_sliding(self, data):
