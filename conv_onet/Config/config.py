@@ -36,7 +36,6 @@ TRAINING = {
 }
 
 TEST = {
-    'threshold': 0.2,
     'eval_mesh': True,
     'eval_pointcloud': False,
     'remove_wall': False,
@@ -45,10 +44,6 @@ TEST = {
 
 GENERATION = {
     'batch_size': 100000,
-    'refinement_step': 0,
-    'use_sampling': False,
-    'resolution_0': 128,
-    'simplify_nfaces': None,
     'latent_number': 4,
     'latent_H': 8,
     'latent_W': 8,
