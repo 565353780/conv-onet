@@ -9,6 +9,8 @@ from tqdm import trange
 
 from conv_onet.Lib.libmcubes.mcubes import marching_cubes
 
+from conv_onet.Config.crop import UNIT_LB, UNIT_UB
+
 from conv_onet.Method.common import \
     normalize_coord, add_key, coord2index, decide_total_volume_range, update_reso
 from conv_onet.Method.patch import getPatchArray
@@ -47,6 +49,8 @@ class Generator3D(object):
             'input_crop_size': input_vol_size,
             'reso': grid_reso
         }
+
+        self.setUnitCropBound()
         return
 
     @classmethod
@@ -57,12 +61,33 @@ class Generator3D(object):
 
         return cls(model, padding, unit_size, query_vol_size)
 
+    def setUnitCropBound(self):
+        query_crop_size = self.vol_bound['query_crop_size']
+        input_crop_size = self.vol_bound['input_crop_size']
+
+        self.vol_bound['axis_n_crop'] = np.ceil(
+            (UNIT_UB - UNIT_LB) / query_crop_size).astype(int)
+
+        lb_query, ub_query = getPatchArray(UNIT_LB, UNIT_UB, query_crop_size)
+
+        center = (lb_query + ub_query) / 2
+        lb_input = center - input_crop_size / 2
+        ub_input = center + input_crop_size / 2
+
+        num_crop = np.prod(self.vol_bound['axis_n_crop'])
+
+        self.vol_bound['n_crop'] = num_crop
+        self.vol_bound['input_vol'] = np.stack([lb_input, ub_input], axis=1)
+        self.vol_bound['query_vol'] = np.stack([lb_query, ub_query], axis=1)
+        return True
+
     def get_crop_bound(self, inputs):
         ''' Divide a scene into crops, get boundary for each crop
 
         Args:
             inputs (dict): input point cloud
         '''
+
         query_crop_size = self.vol_bound['query_crop_size']
         input_crop_size = self.vol_bound['input_crop_size']
 
@@ -87,7 +112,7 @@ class Generator3D(object):
         self.vol_bound['query_vol'] = np.stack([lb_query, ub_query], axis=1)
         return True
 
-    def encode_crop(self, inputs, device, vol_bound=None):
+    def encode_crop(self, inputs, device, vol_bound):
         ''' Encode a crop to feature volumes
 
         Args:
@@ -95,9 +120,6 @@ class Generator3D(object):
             device (device): pytorch device
             vol_bound (dict): volume boundary
         '''
-        if vol_bound == None:
-            vol_bound = self.vol_bound
-
         index = {}
         # crop the input point cloud
         mask_x = (inputs[:, :, 0] >= vol_bound['input_vol'][0][0]) &\
@@ -108,8 +130,12 @@ class Generator3D(object):
                 (inputs[:, :, 2] < vol_bound['input_vol'][1][2])
         mask = mask_x & mask_y & mask_z
 
+        print("encode_crop -> vol")
+        print(vol_bound['input_vol'])
+
         p_input = inputs[mask]
         if p_input.shape[0] == 0:  # no points in the current crop
+            return None
             p_input = inputs.squeeze()
             ind = coord2index(p_input.clone(),
                               vol_bound['input_vol'],
@@ -130,7 +156,7 @@ class Generator3D(object):
             c = self.model.encode_inputs(input_cur)
         return c
 
-    def predict_crop_occ(self, pi, c, vol_bound=None, **kwargs):
+    def predict_crop_occ(self, pi, c, vol_bound=None):
         ''' Predict occupancy values for a crop
 
         Args:
@@ -152,67 +178,39 @@ class Generator3D(object):
 
         # predict occupancy of the current crop
         with torch.no_grad():
-            occ_cur = self.model.decode(pi_in, c, **kwargs).logits
+            occ_cur = self.model.decode(pi_in, c).logits
         occ_hat = occ_cur.squeeze(0)
-
         return occ_hat
 
-    def eval_points(self, p, c=None, vol_bound=None, **kwargs):
+    def eval_points(self, p, c=None, vol_bound=None):
         ''' Evaluates the occupancy values for the points.
 
         Args:
             p (tensor): points
             c (tensor): encoded feature volumes
         '''
+        if c is None:
+            return None
+
         p_split = torch.split(p, self.points_batch_size)
         occ_hats = []
         for pi in p_split:
-            occ_hat = self.predict_crop_occ(pi,
-                                            c,
-                                            vol_bound=vol_bound,
-                                            **kwargs)
+            occ_hat = self.predict_crop_occ(pi, c, vol_bound=vol_bound)
             occ_hats.append(occ_hat)
 
         occ_hat = torch.cat(occ_hats, dim=0)
         return occ_hat
 
-    def estimate_normals(self, vertices, c=None):
-        ''' Estimates the normals by computing the gradient of the objective.
-
-        Args:
-            vertices (numpy array): vertices of the mesh
-            c (tensor): encoded feature volumes
-        '''
-        device = self.device
-        vertices = torch.FloatTensor(vertices)
-        vertices_split = torch.split(vertices, self.points_batch_size)
-
-        normals = []
-        c = c.unsqueeze(0)
-        for vi in vertices_split:
-            vi = vi.unsqueeze(0).to(device)
-            vi.requires_grad_()
-            occ_hat = self.model.decode(vi, c).logits
-            out = occ_hat.sum()
-            out.backward()
-            ni = -vi.grad
-            ni = ni / torch.norm(ni, dim=-1, keepdim=True)
-            ni = ni.squeeze(0).cpu().numpy()
-            normals.append(ni)
-
-        normals = np.concatenate(normals, axis=0)
-        return normals
-
-    def extract_mesh(self, occ_hat, c=None, stats_dict=dict()):
+    def extract_mesh(self, occ_hat, stats_dict=dict()):
         ''' Extracts the mesh from the predicted occupancy grid.
 
         Args:
             occ_hat (tensor): value grid of occupancies
-            c (tensor): encoded feature volumes
             stats_dict (dict): stats dictionary
         '''
         # Some short hands
         threshold = np.log(self.threshold) - np.log(1. - self.threshold)
+
         # Make sure that mesh is watertight
         t0 = time.time()
         occ_hat_padded = np.pad(occ_hat, 1, 'constant', constant_values=-1e6)
@@ -253,10 +251,9 @@ class Generator3D(object):
         stats_dict = {}
 
         inputs = data.get('inputs', torch.empty(1, 0)).to(device)
-        kwargs = {}
 
         # acquire the boundary for every crops
-        self.get_crop_bound(inputs)
+        #  self.get_crop_bound(inputs)
 
         nx = self.resolution0
         n_crop = self.vol_bound['n_crop']
@@ -273,18 +270,21 @@ class Generator3D(object):
             vol_bound = {}
             vol_bound['query_vol'] = self.vol_bound['query_vol'][i]
             vol_bound['input_vol'] = self.vol_bound['input_vol'][i]
-            c = self.encode_crop(inputs, device, vol_bound=vol_bound)
+            c = self.encode_crop(inputs, device, vol_bound)
 
-            bb_min = self.vol_bound['query_vol'][i][0]
-            bb_max = bb_min + self.vol_bound['query_crop_size']
+            if c is not None:
+                bb_min = self.vol_bound['query_vol'][i][0]
+                bb_max = bb_min + self.vol_bound['query_crop_size']
 
-            t = (bb_max - bb_min) / nx  # inteval
-            pp = np.mgrid[bb_min[0]:bb_max[0]:t[0], bb_min[1]:bb_max[1]:t[1],
-                          bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
-            pp = torch.from_numpy(pp).to(device)
-            values = self.eval_points(pp, c, vol_bound=vol_bound,
-                                      **kwargs).detach().cpu().numpy()
-            values = values.reshape(nx, nx, nx)
+                t = (bb_max - bb_min) / nx  # inteval
+                pp = np.mgrid[bb_min[0]:bb_max[0]:t[0], bb_min[1]:bb_max[1]:t[1],
+                              bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
+                pp = torch.from_numpy(pp).to(device)
+                values = self.eval_points(
+                    pp, c, vol_bound=vol_bound).detach().cpu().numpy()
+                values = values.reshape(nx, nx, nx)
+            else:
+                values = np.ones([nx, nx, nx]) * -1e6
 
             # concatenate occ_value along every axis
             # along z axis
@@ -301,6 +301,5 @@ class Generator3D(object):
                 occ_values_y = np.array([]).reshape(r, 0, r * n_crop_axis[2])
 
         value_grid = occ_values_x
-        mesh = self.extract_mesh(value_grid, c, stats_dict=stats_dict)
-
+        mesh = self.extract_mesh(value_grid, stats_dict=stats_dict)
         return mesh, stats_dict
