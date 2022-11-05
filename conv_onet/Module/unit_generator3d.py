@@ -86,85 +86,82 @@ class UnitGenerator3D(object):
         self.vol_bound['query_vol'] = np.stack([lb_query, ub_query], axis=1)
         return True
 
-    def encode_crop(self, inputs, device, vol_bound):
-        ''' Encode a crop to feature volumes
-
-        Args:
-            inputs (dict): input point cloud
-            device (device): pytorch device
-            vol_bound (dict): volume boundary
-        '''
-        index = {}
-        # crop the input point cloud
-        mask_x = (inputs[:, :, 0] >= vol_bound['input_vol'][0][0]) &\
-                (inputs[:, :, 0] < vol_bound['input_vol'][1][0])
-        mask_y = (inputs[:, :, 1] >= vol_bound['input_vol'][0][1]) &\
-                (inputs[:, :, 1] < vol_bound['input_vol'][1][1])
-        mask_z = (inputs[:, :, 2] >= vol_bound['input_vol'][0][2]) &\
-                (inputs[:, :, 2] < vol_bound['input_vol'][1][2])
-        mask = mask_x & mask_y & mask_z
-
-        p_input = inputs[mask]
-        if p_input.shape[0] == 0:  # no points in the current crop
+    def encode_crop(self, crop):
+        if crop.isEmpty():
             return None
 
-        ind = coord2index(p_input.clone(),
-                          vol_bound['input_vol'],
+        index = {}
+
+        p_input = crop.input_point_array
+
+        ind = coord2index(p_input.copy(),
+                          crop.input_bbox.toArray(),
                           reso=self.vol_bound['reso'])
-        index['grid'] = ind.unsqueeze(0)
-        input_cur = add_key(p_input.unsqueeze(0),
+        index['grid'] = torch.tensor(ind.reshape(1, 1, -1)).to(self.device)
+        input_cur = add_key(torch.tensor(p_input.reshape(1, -1,
+                                                         3)).to(self.device),
                             index,
                             'points',
                             'index',
-                            device=device)
+                            device=self.device)
 
         with torch.no_grad():
             c = self.model.encode_inputs(input_cur)
-        return c
 
-    def predict_crop_occ(self, pi, c, vol_bound=None):
-        ''' Predict occupancy values for a crop
+        c['grid'] = c['grid'].detach().clone().cpu().numpy()
+        return c['grid']
 
-        Args:
-            pi (dict): query points
-            c (tensor): encoded feature volumes
-            vol_bound (dict): volume boundary
-        '''
+    def predict_crop_occ(self, pi, crop):
+        c = {'grid': crop.feature_dict['encode']}
+
         occ_hat = pi.new_empty((pi.shape[0]))
 
         if pi.shape[0] == 0:
             return occ_hat
+
         pi_in = pi.unsqueeze(0)
         pi_in = {'p': pi_in}
         p_n = {}
         # projected coordinates normalized to the range of [0, 1]
         p_n['grid'] = normalize_coord(
-            pi.clone(), vol_bound['input_vol']).unsqueeze(0).to(self.device)
+            pi.clone(), crop.input_bbox.toArray()).unsqueeze(0).to(self.device)
         pi_in['p_n'] = p_n
 
         # predict occupancy of the current crop
         with torch.no_grad():
             occ_cur = self.model.decode(pi_in, c).logits
         occ_hat = occ_cur.squeeze(0)
+        occ_hat = occ_hat.detach().cpu().numpy()
         return occ_hat
 
-    def eval_points(self, p, c=None, vol_bound=None):
-        ''' Evaluates the occupancy values for the points.
+    def eval_crop(self, crop):
+        if crop.feature_dict['encode'] is None:
+            return np.ones(
+                [self.resolution0, self.resolution0, self.resolution0]) * -1e6
 
-        Args:
-            p (tensor): points
-            c (tensor): encoded feature volumes
-        '''
-        if c is None:
-            return None
+        bb_min = crop.bbox.min_point.toArray()
+        bb_max = crop.bbox.max_point.toArray()
 
-        p_split = torch.split(p, self.points_batch_size)
+        t = (bb_max - bb_min) / self.resolution0  # inteval
+        pp = np.mgrid[bb_min[0]:bb_max[0]:t[0], bb_min[1]:bb_max[1]:t[1],
+                      bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
+        pp = torch.from_numpy(pp).to(self.device)
+
+        crop.feature_dict['encode'] = torch.tensor(
+            crop.feature_dict['encode']).to(self.device)
+
+        p_split = torch.split(pp, self.points_batch_size)
         occ_hats = []
         for pi in p_split:
-            occ_hat = self.predict_crop_occ(pi, c, vol_bound=vol_bound)
+            occ_hat = self.predict_crop_occ(pi, crop)
             occ_hats.append(occ_hat)
 
-        occ_hat = torch.cat(occ_hats, dim=0)
+        crop.feature_dict['encode'] = crop.feature_dict['encode'].detach(
+        ).clone().cpu().numpy()
+
+        occ_hat = np.concatenate(occ_hats, axis=0)
+        occ_hat = occ_hat.reshape(self.resolution0, self.resolution0,
+                                  self.resolution0)
         return occ_hat
 
     def extract_mesh(self, occ_hat, stats_dict=dict()):
@@ -213,16 +210,14 @@ class UnitGenerator3D(object):
             data (tensor): data tensor
         '''
         self.model.eval()
-        device = self.device
         stats_dict = {}
 
-        inputs = data.get('inputs', torch.empty(1, 0)).to(device)
+        inputs = data.get('inputs', torch.empty(1, 0))
 
-        self.crop_space.updatePointArray(inputs)
-        exit()
+        self.crop_space.updatePointArray(inputs.detach().clone().cpu().numpy())
 
-        # acquire the boundary for every crops
-        #  self.get_crop_bound(inputs)
+        self.crop_space.updateCropFeature("encode", self.encode_crop, True)
+        self.crop_space.updateCropFeature("occ", self.eval_crop, True)
 
         nx = self.resolution0
         n_crop = self.vol_bound['n_crop']
@@ -235,26 +230,8 @@ class UnitGenerator3D(object):
         occ_values_x = np.array([]).reshape(0, r * n_crop_axis[1],
                                             r * n_crop_axis[2])
         for i in trange(n_crop):
-            # encode the current crop
-            vol_bound = {}
-            vol_bound['query_vol'] = self.vol_bound['query_vol'][i]
-            vol_bound['input_vol'] = self.vol_bound['input_vol'][i]
-            c = self.encode_crop(inputs, device, vol_bound)
-
-            if c is not None:
-                bb_min = self.vol_bound['query_vol'][i][0]
-                bb_max = bb_min + self.vol_bound['query_crop_size']
-
-                t = (bb_max - bb_min) / nx  # inteval
-                pp = np.mgrid[bb_min[0]:bb_max[0]:t[0],
-                              bb_min[1]:bb_max[1]:t[1],
-                              bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
-                pp = torch.from_numpy(pp).to(device)
-                values = self.eval_points(
-                    pp, c, vol_bound=vol_bound).detach().cpu().numpy()
-                values = values.reshape(nx, nx, nx)
-            else:
-                values = np.ones([nx, nx, nx]) * -1e6
+            j, k, l = self.crop_space.space_idx_list[i]
+            values = self.crop_space.space[j][k][l].feature_dict['occ']
 
             # concatenate occ_value along every axis
             # along z axis
