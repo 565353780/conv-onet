@@ -9,8 +9,6 @@ from tqdm import trange
 
 from conv_onet.Lib.libmcubes.mcubes import marching_cubes
 
-from conv_onet.Config.crop import UNIT_LB, UNIT_UB
-
 from conv_onet.Method.common import \
     normalize_coord, add_key, coord2index, decide_total_volume_range, update_reso
 from conv_onet.Method.patch import getPatchArray
@@ -49,8 +47,6 @@ class Generator3D(object):
             'input_crop_size': input_vol_size,
             'reso': grid_reso
         }
-
-        self.setUnitCropBound()
         return
 
     @classmethod
@@ -60,26 +56,6 @@ class Generator3D(object):
         query_vol_size = cfg['data']['query_vol_size']
 
         return cls(model, padding, unit_size, query_vol_size)
-
-    def setUnitCropBound(self):
-        query_crop_size = self.vol_bound['query_crop_size']
-        input_crop_size = self.vol_bound['input_crop_size']
-
-        self.vol_bound['axis_n_crop'] = np.ceil(
-            (UNIT_UB - UNIT_LB) / query_crop_size).astype(int)
-
-        lb_query, ub_query = getPatchArray(UNIT_LB, UNIT_UB, query_crop_size)
-
-        center = (lb_query + ub_query) / 2
-        lb_input = center - input_crop_size / 2
-        ub_input = center + input_crop_size / 2
-
-        num_crop = np.prod(self.vol_bound['axis_n_crop'])
-
-        self.vol_bound['n_crop'] = num_crop
-        self.vol_bound['input_vol'] = np.stack([lb_input, ub_input], axis=1)
-        self.vol_bound['query_vol'] = np.stack([lb_query, ub_query], axis=1)
-        return True
 
     def get_crop_bound(self, inputs):
         ''' Divide a scene into crops, get boundary for each crop
@@ -135,7 +111,6 @@ class Generator3D(object):
 
         p_input = inputs[mask]
         if p_input.shape[0] == 0:  # no points in the current crop
-            return None
             p_input = inputs.squeeze()
             ind = coord2index(p_input.clone(),
                               vol_bound['input_vol'],
@@ -253,7 +228,7 @@ class Generator3D(object):
         inputs = data.get('inputs', torch.empty(1, 0)).to(device)
 
         # acquire the boundary for every crops
-        #  self.get_crop_bound(inputs)
+        self.get_crop_bound(inputs)
 
         nx = self.resolution0
         n_crop = self.vol_bound['n_crop']
