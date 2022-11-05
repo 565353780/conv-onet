@@ -43,3 +43,7 @@ class Crop(object):
     def updateFeature(self, feature_name, feature_value):
         self.feature_dict[feature_name] = feature_value
         return True
+
+    def updateFeatureDict(self, feature_dict):
+        self.feature_dict.update(feature_dict)
+        return True
