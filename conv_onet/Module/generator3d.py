@@ -50,7 +50,7 @@ class Generator3D(object):
             'reso': grid_reso
         }
 
-        self.setUnitCropBound()
+        #  self.setUnitCropBound()
         return
 
     @classmethod
@@ -250,7 +250,7 @@ class Generator3D(object):
         inputs = data.get('inputs', torch.empty(1, 0)).to(device)
 
         # acquire the boundary for every crops
-        #  self.get_crop_bound(inputs)
+        self.get_crop_bound(inputs)
 
         nx = self.resolution0
         n_crop = self.vol_bound['n_crop']
