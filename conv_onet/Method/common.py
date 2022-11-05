@@ -296,24 +296,6 @@ def normalize_coord(p, vol_range):
     return p
 
 
-def coordinate2index(x, reso, coord_type='2d'):
-    ''' Normalize coordinate to [0, 1] for unit cube experiments.
-        Corresponds to our 3D model
-
-    Args:
-        x (tensor): coordinate
-        reso (int): defined resolution
-        coord_type (str): coordinate type
-    '''
-    x = (x * reso).long()
-    if coord_type == '2d':  # plane
-        index = x[:, :, 0] + reso * x[:, :, 1]
-    elif coord_type == '3d':  # grid
-        index = x[:, :, 0] + reso * (x[:, :, 1] + reso * x[:, :, 2])
-    index = index[:, None, :]
-    return index
-
-
 def coord2index(p, vol_range, reso=None):
     ''' Normalize coordinate to [0, 1] for sliding-window experiments.
         Corresponds to our 3D model
@@ -322,7 +304,6 @@ def coord2index(p, vol_range, reso=None):
         p (tensor): points
         vol_range (numpy array): volume boundary
         reso (int): defined resolution
-        plane (str): feature type, ['xz', 'xy', 'yz'] - canonical planes; ['grid'] - grid volume
     '''
     # normalize to [0, 1]
     x = normalize_coord(p, vol_range)
@@ -332,12 +313,8 @@ def coord2index(p, vol_range, reso=None):
     else:  #* pytorch tensor
         x = (x * reso).long()
 
-    if x.shape[1] == 2:
-        index = x[:, 0] + reso * x[:, 1]
-        index[index > reso**2] = reso**2
-    elif x.shape[1] == 3:
-        index = x[:, 0] + reso * (x[:, 1] + reso * x[:, 2])
-        index[index > reso**3] = reso**3
+    index = x[:, 0] + reso * (x[:, 1] + reso * x[:, 2])
+    index[index > reso**3] = reso**3
 
     return index[None]
 
