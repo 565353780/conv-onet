@@ -13,8 +13,13 @@ class Crop(object):
         self.input_bbox = input_bbox
 
         self.input_point_array = None
-        self.feature = None
+        self.feature_dict = {}
         return
+
+    def reset(self):
+        self.input_point_array = None
+        self.feature_dict = {}
+        return True
 
     @classmethod
     def fromList(cls,
@@ -24,10 +29,17 @@ class Crop(object):
         return cls(Point.fromList(center_list), BBox.fromList(bbox_list),
                    BBox.fromList(input_bbox_list))
 
+    def isEmpty(self):
+        if self.input_point_array is None:
+            return True
+        if self.input_point_array.shape[0] == 0:
+            return True
+        return False
+
     def updateInputPointArray(self, input_point_array):
         self.input_point_array = input_point_array
         return True
 
-    def updateFeature(self, feature):
-        self.feature = feature
+    def updateFeature(self, feature_name, feature_value):
+        self.feature_dict[feature_name] = feature_value
         return True
