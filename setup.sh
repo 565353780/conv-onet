@@ -1,5 +1,5 @@
-pip install cython imageio numpy matplotlib pandas pillow pyembree pytest pyyaml \
-  scikit-image scipy tensorboardx tqdm trimesh h5py plyfile
+pip install cython imageio numpy pandas pillow pyembree pytest pyyaml \
+  scikit-image scipy tensorboardx tqdm trimesh h5py plyfile open3d
 
 pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
 
