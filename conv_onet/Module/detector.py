@@ -13,7 +13,7 @@ from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 from conv_onet.Method.io import export_pointcloud
 from conv_onet.Method.path import createFileFolder
 
-from conv_onet.Module.generator3d import Generator3D
+from conv_onet.Module.unit_generator3d import UnitGenerator3D
 
 
 class Detector(object):
@@ -31,7 +31,7 @@ class Detector(object):
 
         self.checkpoint_io = CheckpointIO(out_dir, model=self.model)
 
-        self.generator = Generator3D.fromConfig(self.model, self.cfg)
+        self.generator = UnitGenerator3D.fromConfig(self.model, self.cfg)
 
         self.loadModel(self.cfg['test']['model_file'])
         return
