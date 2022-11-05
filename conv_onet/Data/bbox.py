@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import numpy as np
 from copy import deepcopy
 
 from conv_onet.Data.point import Point
@@ -25,6 +26,12 @@ class BBox(object):
     def fromList(cls, bbox_list):
         bbox = cls(Point.fromList(bbox_list[0]), Point.fromList(bbox_list[1]))
         return bbox
+
+    def toList(self):
+        return [self.min_point.toList(), self.max_point.toList()]
+
+    def toArray(self):
+        return np.array(self.toList())
 
     def isValid(self):
         if self.min_point.x == inf:
