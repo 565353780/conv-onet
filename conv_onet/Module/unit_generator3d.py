@@ -16,6 +16,7 @@ from conv_onet.Config.crop import UNIT_LB, UNIT_UB
 from conv_onet.Method.common import \
     normalize_coord, add_key, coord2index, decide_total_volume_range, update_reso
 from conv_onet.Method.patch import getPatchArray
+from conv_onet.Method.render import renderCropSpaceFeature
 
 
 class UnitGenerator3D(object):
@@ -86,16 +87,13 @@ class UnitGenerator3D(object):
         self.vol_bound['query_vol'] = np.stack([lb_query, ub_query], axis=1)
         return True
 
-    def encode_crop(self, crop):
-        if crop.isEmpty():
-            return None
-
+    def encodePoints(self, point_array, input_bbox):
         index = {}
 
-        p_input = crop.input_point_array
+        p_input = point_array
 
         ind = coord2index(p_input.copy(),
-                          crop.input_bbox.toArray(),
+                          input_bbox.toArray(),
                           reso=self.vol_bound['reso'])
         index['grid'] = torch.tensor(ind.reshape(1, 1, -1)).to(self.device)
         input_cur = add_key(torch.tensor(p_input.reshape(1, -1,
@@ -107,13 +105,9 @@ class UnitGenerator3D(object):
 
         with torch.no_grad():
             c = self.model.encode_inputs(input_cur)
+        return c
 
-        c['grid'] = c['grid'].detach().clone().cpu().numpy()
-        return c['grid']
-
-    def predict_crop_occ(self, pi, crop):
-        c = {'grid': crop.feature_dict['encode']}
-
+    def decodeSplitOcc(self, pi, c, input_bbox):
         occ_hat = pi.new_empty((pi.shape[0]))
 
         if pi.shape[0] == 0:
@@ -124,7 +118,7 @@ class UnitGenerator3D(object):
         p_n = {}
         # projected coordinates normalized to the range of [0, 1]
         p_n['grid'] = normalize_coord(
-            pi.clone(), crop.input_bbox.toArray()).unsqueeze(0).to(self.device)
+            pi.clone(), input_bbox.toArray()).unsqueeze(0).to(self.device)
         pi_in['p_n'] = p_n
 
         # predict occupancy of the current crop
@@ -134,35 +128,48 @@ class UnitGenerator3D(object):
         occ_hat = occ_hat.detach().cpu().numpy()
         return occ_hat
 
-    def eval_crop(self, crop):
-        if crop.feature_dict['encode'] is None:
+    def decodeOcc(self, c, bbox, input_bbox):
+        if c is None:
             return np.ones(
                 [self.resolution0, self.resolution0, self.resolution0]) * -1e6
 
-        bb_min = crop.bbox.min_point.toArray()
-        bb_max = crop.bbox.max_point.toArray()
+        bb_min = bbox.min_point.toArray()
+        bb_max = bbox.max_point.toArray()
 
         t = (bb_max - bb_min) / self.resolution0  # inteval
         pp = np.mgrid[bb_min[0]:bb_max[0]:t[0], bb_min[1]:bb_max[1]:t[1],
                       bb_min[2]:bb_max[2]:t[2]].reshape(3, -1).T
         pp = torch.from_numpy(pp).to(self.device)
 
-        crop.feature_dict['encode'] = torch.tensor(
-            crop.feature_dict['encode']).to(self.device)
-
         p_split = torch.split(pp, self.points_batch_size)
         occ_hats = []
         for pi in p_split:
-            occ_hat = self.predict_crop_occ(pi, crop)
+            occ_hat = self.decodeSplitOcc(pi, c, input_bbox)
             occ_hats.append(occ_hat)
-
-        crop.feature_dict['encode'] = crop.feature_dict['encode'].detach(
-        ).clone().cpu().numpy()
 
         occ_hat = np.concatenate(occ_hats, axis=0)
         occ_hat = occ_hat.reshape(self.resolution0, self.resolution0,
                                   self.resolution0)
         return occ_hat
+
+    def encodeCrop(self, crop):
+        if crop.isEmpty():
+            return None
+
+        c = self.encodePoints(crop.input_point_array, crop.input_bbox)
+        return c['grid'].detach().clone().cpu().numpy()
+
+    def reconCrop(self, crop):
+        if crop.isEmpty():
+            return {'encode': None, 'occ': None}
+
+        c = self.encodePoints(crop.input_point_array, crop.input_bbox)
+        occ_hat = self.decodeOcc(c, crop.bbox, crop.input_bbox)
+        feature_dict = {
+            'encode': c['grid'].detach().clone().cpu().numpy(),
+            'occ': occ_hat
+        }
+        return feature_dict
 
     def extract_mesh(self, occ_hat, stats_dict=dict()):
         ''' Extracts the mesh from the predicted occupancy grid.
@@ -216,8 +223,19 @@ class UnitGenerator3D(object):
 
         self.crop_space.updatePointArray(inputs.detach().clone().cpu().numpy())
 
-        self.crop_space.updateCropFeature("encode", self.encode_crop, True)
-        self.crop_space.updateCropFeature("occ", self.eval_crop, True)
+        #  self.crop_space.updateCropFeature("encode", self.encodeCrop, True)
+
+        self.crop_space.updateCropFeatureDict(self.reconCrop, True)
+
+        feature_mask = self.crop_space.getFeatureMask('occ')
+        mask_feature_idx = np.dstack(np.where(feature_mask == True))[0]
+        print(mask_feature_idx.shape[0])
+
+        i, j, k = mask_feature_idx[0, :]
+        print(self.crop_space.space[i][j][k].feature_dict['encode'].shape)
+        print(self.crop_space.space[i][j][k].feature_dict['occ'].shape)
+
+        #  renderCropSpaceFeature(self.crop_space, "occ")
 
         nx = self.resolution0
         n_crop = self.vol_bound['n_crop']
@@ -232,9 +250,13 @@ class UnitGenerator3D(object):
         for i in trange(n_crop):
             j, k, l = self.crop_space.space_idx_list[i]
             values = self.crop_space.space[j][k][l].feature_dict['occ']
+            if values is None:
+                values = np.ones([
+                    self.resolution0, self.resolution0, self.resolution0
+                ]) * -1e6
 
-            # concatenate occ_value along every axis
-            # along z axis
+                # concatenate occ_value along every axis
+                # along z axis
             occ_values = np.concatenate((occ_values, values), axis=2)
             # along y axis
             if (i + 1) % n_crop_axis[2] == 0:
