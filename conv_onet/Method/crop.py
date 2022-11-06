@@ -11,8 +11,8 @@ def getFeaturePoints(crop, feature_name):
 
     assert len(feature_shape) == 3
 
-    min_point = crop.bbox.min_point.toArray()
-    diff_point = crop.bbox.diff_point.toArray()
+    min_point = crop.bbox.min_point
+    diff_point = crop.bbox.diff_point
 
     x_diff = diff_point.x / feature_shape[0]
     y_diff = diff_point.y / feature_shape[1]
@@ -36,3 +36,14 @@ def getFeaturePoints(crop, feature_name):
                 feature_points.append(point)
                 features.append(feature[i][j][k])
     return feature_points, features
+
+
+def getFeaturePointsByIdx(crop_space, space_idx, feature_name):
+    i, j, k = space_idx
+    crop = crop_space.space[i][j][k]
+    return getFeaturePoints(crop, feature_name)
+
+
+def getFeaturePointsByIdxWithPool(inputs):
+    crop_space, space_idx, feature_name = inputs
+    return getFeaturePointsByIdx(crop_space, space_idx, feature_name)
