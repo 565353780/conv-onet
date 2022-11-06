@@ -43,7 +43,7 @@ class CropSpace(object):
     def getCropNum(self):
         if self.space_size is None:
             return 0
-        return np.sum(self.space_size)
+        return np.prod(self.space_size)
 
     def createSpace(self):
         self.space_size = np.ceil(
@@ -101,7 +101,7 @@ class CropSpace(object):
             crop.updateInputPointArray(mask_point_array)
         return True
 
-    def updateCropFeature(self, feature_name, fun, print_progress=False):
+    def updateCropFeature(self, feature_name, func, print_progress=False):
         assert self.space_size is not None
         assert self.space_idx_list is not None
         assert self.space is not None
@@ -109,9 +109,35 @@ class CropSpace(object):
         for_data = self.space_idx_list
         if print_progress:
             print("[INFO][CropSpace::updateCropFeature]")
-            print("\t start update crop feature for : " + feature_name + "...")
+            print("\t start update crop feature for " + feature_name + "...")
             for_data = tqdm(for_data)
         for i, j, k in for_data:
             crop = self.space[i][j][k]
-            crop.updateFeature(feature_name, fun(crop))
+            crop.updateFeature(feature_name, func(crop))
         return True
+
+    def updateCropFeatureDict(self, func, print_progress=False):
+        assert self.space_size is not None
+        assert self.space_idx_list is not None
+        assert self.space is not None
+
+        for_data = self.space_idx_list
+        if print_progress:
+            print("[INFO][CropSpace::updateCropFeatureDict]")
+            print("\t start update crop feature...")
+            for_data = tqdm(for_data)
+        for i, j, k in for_data:
+            crop = self.space[i][j][k]
+            crop.updateFeatureDict(func(crop))
+        return True
+
+    def getFeatureMask(self, feature_name):
+        assert self.space_size is not None
+        assert self.space_idx_list is not None
+        assert self.space is not None
+
+        feature_mask = np.zeros(self.space_size, dtype=bool)
+        for i, j, k in self.space_idx_list:
+            feature_mask[i][j][k] = self.space[i][j][k].feature_dict[
+                feature_name] is not None
+        return feature_mask
