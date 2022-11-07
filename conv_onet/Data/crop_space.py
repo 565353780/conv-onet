@@ -45,6 +45,16 @@ class CropSpace(object):
             return 0
         return np.prod(self.space_size)
 
+    def getCrop(self, i, j, k):
+        assert self.space_size is not None
+        assert self.space is not None
+
+        assert 0 <= i < self.space_size[0]
+        assert 0 <= j < self.space_size[1]
+        assert 0 <= k < self.space_size[2]
+
+        return self.space[i][j][k]
+
     def createSpace(self):
         self.space_size = np.ceil(
             (UNIT_UB - UNIT_LB) / self.query_crop_size).astype(int)
@@ -86,7 +96,7 @@ class CropSpace(object):
         self.point_array = point_array
 
         for i, j, k in self.space_idx_list:
-            crop = self.space[i][j][k]
+            crop = self.getCrop(i, j, k)
             mask_x = (self.point_array[:, :, 0] >= crop.input_bbox.min_point.x) &\
                 (self.point_array[:, :, 0] <
                  crop.input_bbox.max_point.x)
@@ -112,7 +122,7 @@ class CropSpace(object):
             print("\t start update crop feature for " + feature_name + "...")
             for_data = tqdm(for_data)
         for i, j, k in for_data:
-            crop = self.space[i][j][k]
+            crop = self.getCrop(i, j, k)
             crop.updateFeature(feature_name, func(crop))
         return True
 
@@ -127,7 +137,7 @@ class CropSpace(object):
             print("\t start update crop feature...")
             for_data = tqdm(for_data)
         for i, j, k in for_data:
-            crop = self.space[i][j][k]
+            crop = self.getCrop(i, j, k)
             crop.updateFeatureDict(func(crop))
         return True
 
@@ -138,6 +148,10 @@ class CropSpace(object):
 
         feature_mask = np.zeros(self.space_size, dtype=bool)
         for i, j, k in self.space_idx_list:
-            feature_mask[i][j][k] = self.space[i][j][k].feature_dict[
-                feature_name] is not None
+            feature_mask[i][j][k] = self.getCrop(
+                i, j, k).feature_dict[feature_name] is not None
         return feature_mask
+
+    def getMaskFeatureIdxArray(self, feature_name):
+        feature_mask = self.getFeatureMask(feature_name)
+        return np.dstack(np.where(feature_mask == True))[0]
