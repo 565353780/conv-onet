@@ -116,7 +116,8 @@ def demo():
                 # FIXME: finish it later
                 if False:
                     mesh, stats_dict = unit_generator.generate_mesh_sliding(
-                        'data')
+                        None)
+
                     mesh.export("test.off")
 
             if (checkpoint_every > 0 and (it % checkpoint_every) == 0):
