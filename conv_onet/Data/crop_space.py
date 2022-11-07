@@ -55,6 +55,15 @@ class CropSpace(object):
 
         return self.space[i][j][k]
 
+    def getCropByIdx(self, crop_idx):
+        assert self.space_size is not None
+        assert self.space_idx_list is not None
+        assert self.space is not None
+        assert crop_idx < len(self.space_idx_list)
+
+        i, j, k = self.space_idx_list[crop_idx]
+        return self.getCrop(i, j, k)
+
     def createSpace(self):
         self.space_size = np.ceil(
             (UNIT_UB - UNIT_LB) / self.query_crop_size).astype(int)
