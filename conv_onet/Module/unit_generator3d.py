@@ -171,6 +171,17 @@ class UnitGenerator3D(object):
         }
         return feature_dict
 
+    def reconSpace(self, point_array, render=False, print_progress=False):
+        self.crop_space.updatePointArray(point_array)
+
+        #  self.crop_space.updateCropFeature("encode", self.encodeCrop, print_progress)
+
+        self.crop_space.updateCropFeatureDict(self.reconCrop, print_progress)
+
+        if render:
+            renderCropSpaceFeature(self.crop_space, "occ", 2, print_progress)
+        return True
+
     def extract_mesh(self, occ_hat, stats_dict=dict()):
         ''' Extracts the mesh from the predicted occupancy grid.
 
@@ -209,7 +220,7 @@ class UnitGenerator3D(object):
             return mesh
         return mesh
 
-    def generate_mesh_sliding(self, data):
+    def generate_mesh_sliding(self, data, render=False, print_progress=False):
         ''' Generates the output mesh in sliding-window manner.
             Adapt for real-world scale.
 
@@ -221,13 +232,8 @@ class UnitGenerator3D(object):
 
         inputs = data.get('inputs', torch.empty(1, 0))
 
-        self.crop_space.updatePointArray(inputs.detach().clone().cpu().numpy())
-
-        #  self.crop_space.updateCropFeature("encode", self.encodeCrop, True)
-
-        self.crop_space.updateCropFeatureDict(self.reconCrop, True)
-
-        #  renderCropSpaceFeature(self.crop_space, "occ", 4, True)
+        point_array = inputs.detach().clone().cpu().numpy()
+        self.reconSpace(point_array, render, print_progress)
 
         nx = self.resolution0
         n_crop = self.vol_bound['n_crop']
@@ -240,8 +246,7 @@ class UnitGenerator3D(object):
         occ_values_x = np.array([]).reshape(0, r * n_crop_axis[1],
                                             r * n_crop_axis[2])
         for i in trange(n_crop):
-            j, k, l = self.crop_space.space_idx_list[i]
-            values = self.crop_space.getCrop(j, k, l).feature_dict['occ']
+            values = self.crop_space.getCropByIdx(i).feature_dict['occ']
             if values is None:
                 values = np.ones([
                     self.resolution0, self.resolution0, self.resolution0
