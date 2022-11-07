@@ -33,7 +33,6 @@ class PatchLocalDecoder(nn.Module):
                  leaky=False,
                  n_blocks=5,
                  sample_mode='bilinear',
-                 local_coord=False,
                  pos_encoding='linear',
                  unit_size=0.1):
         super().__init__()
@@ -56,10 +55,7 @@ class PatchLocalDecoder(nn.Module):
 
         self.sample_mode = sample_mode
 
-        if local_coord:
-            self.map2local = map2local(unit_size, pos_encoding=pos_encoding)
-        else:
-            self.map2local = None
+        self.map2local = map2local(unit_size, pos_encoding=pos_encoding)
 
         if pos_encoding == 'sin_cos':
             self.fc_p = nn.Linear(60, hidden_size)
@@ -96,8 +92,7 @@ class PatchLocalDecoder(nn.Module):
             c = c.transpose(1, 2)
 
         p = p.float()
-        if self.map2local:
-            p = self.map2local(p)
+        p = self.map2local(p)
 
         net = self.fc_p(p)
         for i in range(self.n_blocks):

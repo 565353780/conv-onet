@@ -21,11 +21,9 @@ class PatchLocalPoolPointnet(nn.Module):
         dim (int): input points dimension
         hidden_dim (int): hidden dimension of the network
         scatter_type (str): feature aggregation when doing local pooling
-        plane_resolution (int): defined resolution for plane feature
         grid_resolution (int): defined resolution for grid feature
         padding (float): conventional padding paramter of ONet for unit cube, so [-0.5, 0.5] -> [-0.55, 0.55]
         n_blocks (int): number of blocks ResNetBlockFC layers
-        local_coord (bool): whether to use local coordinate
         pos_encoding (str): method for the positional encoding, linear|sin_cos
         unit_size (float): defined voxel unit size for local system
     '''
@@ -35,11 +33,9 @@ class PatchLocalPoolPointnet(nn.Module):
                  dim=3,
                  hidden_dim=128,
                  scatter_type='max',
-                 plane_resolution=None,
                  grid_resolution=None,
                  padding=0.1,
                  n_blocks=5,
-                 local_coord=False,
                  pos_encoding='linear',
                  unit_size=0.1):
         super().__init__()
@@ -52,7 +48,6 @@ class PatchLocalPoolPointnet(nn.Module):
 
         self.actvn = nn.ReLU()
         self.hidden_dim = hidden_dim
-        self.reso_plane = plane_resolution
         self.reso_grid = grid_resolution
         self.padding = padding
 
@@ -65,31 +60,12 @@ class PatchLocalPoolPointnet(nn.Module):
         else:
             raise ValueError('incorrect scatter type')
 
-        if local_coord:
-            self.map2local = map2local(unit_size, pos_encoding=pos_encoding)
-        else:
-            self.map2local = None
+        self.map2local = map2local(unit_size, pos_encoding=pos_encoding)
 
         if pos_encoding == 'sin_cos':
             self.fc_pos = nn.Linear(60, 2 * hidden_dim)
         else:
             self.fc_pos = nn.Linear(dim, 2 * hidden_dim)
-
-    def generate_plane_features(self, index, c):
-        c = c.permute(0, 2, 1)
-        # scatter plane features from points
-        if index.max() < self.reso_plane**2:
-            fea_plane = c.new_zeros(c.size(0), self.c_dim, self.reso_plane**2)
-            fea_plane = scatter_mean(c, index,
-                                     out=fea_plane)  # B x c_dim x reso^2
-        else:
-            fea_plane = scatter_mean(c, index)  # B x c_dim x reso^2
-            if fea_plane.shape[-1] > self.reso_plane**2:  # deal with outliers
-                fea_plane = fea_plane[:, :, :-1]
-
-        fea_plane = fea_plane.reshape(c.size(0), self.c_dim, self.reso_plane,
-                                      self.reso_plane)
-        return fea_plane
 
     def generate_grid_features(self, index, c):
         # scatter grid features from points
@@ -110,25 +86,20 @@ class PatchLocalPoolPointnet(nn.Module):
     def pool_local(self, index, c):
         _, fea_dim = c.size(0), c.size(2)
 
-        c_out = 0
         # scatter plane features from points
         fea = self.scatter(c.permute(0, 2, 1), index['grid'])
         if self.scatter == scatter_max:
             fea = fea[0]
         # gather feature back to points
         fea = fea.gather(dim=2, index=index['grid'].expand(-1, fea_dim, -1))
-        c_out += fea
-        return c_out.permute(0, 2, 1)
+        return fea.permute(0, 2, 1)
 
     def forward(self, inputs):
         p = inputs['points']
         index = inputs['index']
 
-        if self.map2local:
-            pp = self.map2local(p)
-            net = self.fc_pos(pp)
-        else:
-            net = self.fc_pos(p)
+        pp = self.map2local(p)
+        net = self.fc_pos(pp)
 
         net = self.blocks[0](net)
         for block in self.blocks[1:]:

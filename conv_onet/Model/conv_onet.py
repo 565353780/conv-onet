@@ -4,9 +4,9 @@
 import torch.nn as nn
 from torch import distributions as dist
 
-from conv_onet.Model.decoder.patch_local_decoder import PatchLocalDecoder
-
 from conv_onet.Model.encoder.pointnet.patch_local_pool_pointnet import PatchLocalPoolPointnet
+
+from conv_onet.Model.decoder.patch_local_decoder import PatchLocalDecoder
 
 from conv_onet.Method.common import update_reso
 
@@ -16,20 +16,19 @@ class ConvolutionalOccupancyNetwork(nn.Module):
     def __init__(self, padding, unit_size, query_vol_size, device):
         super().__init__()
 
-        self.decoder = PatchLocalDecoder(c_dim=32,
-                                         hidden_size=32,
-                                         local_coord=True,
-                                         unit_size=unit_size).to(device)
-
         # update the feature volume/plane resolution
         reso = query_vol_size + 2**6 - 1
         grid_resolution = update_reso(reso)
+
         self.encoder = PatchLocalPoolPointnet(c_dim=32,
                                               hidden_dim=32,
                                               grid_resolution=grid_resolution,
                                               padding=padding,
-                                              local_coord=True,
                                               unit_size=unit_size).to(device)
+
+        self.decoder = PatchLocalDecoder(c_dim=32,
+                                         hidden_size=32,
+                                         unit_size=unit_size).to(device)
 
         self._device = device
         return
