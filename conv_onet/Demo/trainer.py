@@ -62,9 +62,9 @@ def demo():
 
     model = ConvolutionalOccupancyNetwork.fromConfig(cfg, device)
 
-    generator = UnitGenerator3D(model, cfg['data']['padding'],
-                                cfg['data']['unit_size'],
-                                cfg['data']['query_vol_size'])
+    unit_generator = UnitGenerator3D(model, cfg['data']['padding'],
+                                     cfg['data']['unit_size'],
+                                     cfg['data']['query_vol_size'])
 
     # Intialize training
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
@@ -115,7 +115,8 @@ def demo():
                 print('Visualizing')
                 # FIXME: finish it later
                 if False:
-                    mesh, stats_dict = generator.generate_mesh_sliding('data')
+                    mesh, stats_dict = unit_generator.generate_mesh_sliding(
+                        'data')
                     mesh.export("test.off")
 
             if (checkpoint_every > 0 and (it % checkpoint_every) == 0):
