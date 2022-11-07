@@ -31,10 +31,9 @@ class Detector(object):
 
         self.checkpoint_io = CheckpointIO(out_dir, model=self.model)
 
-        self.generator = UnitGenerator3D(self.model,
-                                         self.cfg['data']['padding'],
-                                         self.cfg['data']['unit_size'],
-                                         self.cfg['data']['query_vol_size'])
+        self.unit_generator = UnitGenerator3D(
+            self.model, self.cfg['data']['padding'],
+            self.cfg['data']['unit_size'], self.cfg['data']['query_vol_size'])
 
         self.loadModel(self.cfg['test']['model_file'])
         return
@@ -42,6 +41,13 @@ class Detector(object):
     def loadModel(self, model_file_path):
         self.checkpoint_io.load(model_file_path)
         return True
+
+    def reconSpace(self, point_array, render=False, print_progress=False):
+        return self.unit_generator.reconSpace(point_array, render,
+                                              print_progress)
+
+    def getCropSpace(self):
+        return self.unit_generator.crop_space
 
     def detect(self, data):
         modelname = data['model']
@@ -52,7 +58,9 @@ class Detector(object):
         createFileFolder(save_input_file_path)
         createFileFolder(save_mesh_file_path)
 
-        mesh, stats_dict = self.generator.generate_mesh_sliding(data)
+        assert 'inputs' in data.keys()
+        point_array = data['inputs'].detach().clone().cpu().numpy()
+        mesh, stats_dict = self.unit_generator.generate_mesh_sliding(point_array)
 
         mesh.export(save_mesh_file_path)
 
