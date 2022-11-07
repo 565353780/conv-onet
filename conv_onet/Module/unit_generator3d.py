@@ -212,19 +212,13 @@ class UnitGenerator3D(object):
             return mesh
         return mesh
 
-    def generate_mesh_sliding(self, data, render=False, print_progress=False):
-        ''' Generates the output mesh in sliding-window manner.
-            Adapt for real-world scale.
-
-        Args:
-            data (tensor): data tensor
-        '''
+    def generate_mesh_sliding(self,
+                              point_array,
+                              render=False,
+                              print_progress=False):
         self.model.eval()
         stats_dict = {}
 
-        inputs = data.get('inputs', torch.empty(1, 0))
-
-        point_array = inputs.detach().clone().cpu().numpy()
         self.reconSpace(point_array, render, print_progress)
 
         nx = self.resolution0
