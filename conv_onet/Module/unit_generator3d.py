@@ -227,15 +227,7 @@ class UnitGenerator3D(object):
 
         self.crop_space.updateCropFeatureDict(self.reconCrop, True)
 
-        feature_mask = self.crop_space.getFeatureMask('occ')
-        mask_feature_idx = np.dstack(np.where(feature_mask == True))[0]
-        print(mask_feature_idx.shape[0])
-
-        i, j, k = mask_feature_idx[0, :]
-        print(self.crop_space.space[i][j][k].feature_dict['encode'].shape)
-        print(self.crop_space.space[i][j][k].feature_dict['occ'].shape)
-
-        #  renderCropSpaceFeature(self.crop_space, "occ")
+        #  renderCropSpaceFeature(self.crop_space, "occ", 4, True)
 
         nx = self.resolution0
         n_crop = self.vol_bound['n_crop']
@@ -249,7 +241,7 @@ class UnitGenerator3D(object):
                                             r * n_crop_axis[2])
         for i in trange(n_crop):
             j, k, l = self.crop_space.space_idx_list[i]
-            values = self.crop_space.space[j][k][l].feature_dict['occ']
+            values = self.crop_space.getCrop(j, k, l).feature_dict['occ']
             if values is None:
                 values = np.ones([
                     self.resolution0, self.resolution0, self.resolution0
