@@ -20,7 +20,7 @@ from conv_onet.Dataset.shapes3d_dataset import Shapes3dDataset, collate_remove_n
 
 from conv_onet.Method.time import getCurrentTime
 
-from conv_onet.Module.generator3d import Generator3D
+from conv_onet.Module.unit_generator3d import UnitGenerator3D
 from conv_onet.Module.trainer import Trainer
 
 
@@ -62,7 +62,9 @@ def demo():
 
     model = ConvolutionalOccupancyNetwork.fromConfig(cfg, device)
 
-    generator = Generator3D.fromConfig(model, cfg)
+    generator = UnitGenerator3D(model, cfg['data']['padding'],
+                                cfg['data']['unit_size'],
+                                cfg['data']['query_vol_size'])
 
     # Intialize training
     optimizer = optim.Adam(model.parameters(), lr=1e-4)

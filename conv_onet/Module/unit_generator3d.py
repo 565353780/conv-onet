@@ -59,14 +59,6 @@ class UnitGenerator3D(object):
                                     self.vol_bound['query_crop_size'])
         return
 
-    @classmethod
-    def fromConfig(cls, model, cfg):
-        padding = cfg['data']['padding']
-        unit_size = cfg['data']['unit_size']
-        query_vol_size = cfg['data']['query_vol_size']
-
-        return cls(model, padding, unit_size, query_vol_size)
-
     def setUnitCropBound(self):
         query_crop_size = self.vol_bound['query_crop_size']
         input_crop_size = self.vol_bound['input_crop_size']
