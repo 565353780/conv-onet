@@ -221,6 +221,12 @@ class UnitGenerator3D(object):
 
         self.reconSpace(point_array, render, print_progress)
 
+        mask_feature_idx_array = self.crop_space.getMaskFeatureIdxArray('encode')
+        print(len(mask_feature_idx_array))
+        i, j, k = mask_feature_idx_array[0]
+        crop = self.crop_space.getCrop(i, j, k)
+        print(crop.feature_dict['encode'].shape)
+
         nx = self.resolution0
         n_crop = self.vol_bound['n_crop']
         n_crop_axis = self.vol_bound['axis_n_crop']
