@@ -3,6 +3,7 @@
 
 import torch
 import numpy as np
+from tqdm import tqdm
 
 from conv_onet.Config.config import CONFIG
 
@@ -42,14 +43,19 @@ class Detector(object):
         self.checkpoint_io.load(model_file_path)
         return True
 
-    def reconSpace(self, point_array, render=False, print_progress=False):
-        return self.unit_generator.reconSpace(point_array, render,
-                                              print_progress)
+    def detect(self, point_array, render=False, print_progress=False):
+        result = {}
 
-    def getCropSpace(self):
-        return self.unit_generator.crop_space
+        self.unit_generator.reconSpace(point_array, render, print_progress)
+        crop_space = self.unit_generator.crop_space
 
-    def detect(self, data):
+        result['encode'] = crop_space.getFeatureArray('encode')
+        result['mask'] = crop_space.getFeatureMaskArray('encode')
+        result['mask_feature_idx'] = crop_space.getMaskFeatureIdxArray(
+            'encode')
+        return result
+
+    def detectAndSave(self, data, render=False, print_progress=False):
         modelname = data['model']
 
         save_input_file_path = self.generation_dir + 'input/' + modelname + '.ply'
@@ -60,7 +66,8 @@ class Detector(object):
 
         assert 'inputs' in data.keys()
         point_array = data['inputs'].detach().clone().cpu().numpy()
-        mesh, stats_dict = self.unit_generator.generate_mesh_sliding(point_array)
+        mesh, stats_dict = self.unit_generator.generate_mesh_sliding(
+            point_array, render, print_progress)
 
         mesh.export(save_mesh_file_path)
 
@@ -68,7 +75,10 @@ class Detector(object):
         export_pointcloud(inputs, save_input_file_path, False)
         return True
 
-    def detectPointArray(self, point_array):
+    def detectPointArray(self,
+                         point_array,
+                         render=False,
+                         print_progress=False):
         data = {
             'inputs':
             torch.tensor(point_array.astype(np.float32)).reshape(1, -1,
@@ -78,4 +88,4 @@ class Detector(object):
             'model':
             'test',
         }
-        return self.detect(data)
+        return self.detect(data, render, print_progress)
