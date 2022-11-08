@@ -22,6 +22,9 @@ def demo():
     mesh = o3d.io.read_triangle_mesh(mesh_file_path)
     pcd = mesh.sample_points_uniformly(2000000)
     points = np.array(pcd.points)
+    render = False
+    print_progress = True
+
     box = pcd.get_axis_aligned_bounding_box()
     print(box)
     print(box.get_extent())
@@ -33,5 +36,5 @@ def demo():
     sample_points = points[sample_point_idx_array]
 
     detector = Detector()
-    detector.detectPointArray(sample_points)
+    detector.detectPointArray(sample_points, render, print_progress)
     return True
