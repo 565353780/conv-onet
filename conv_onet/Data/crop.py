@@ -38,6 +38,7 @@ class Crop(object):
 
     def updateInputPointArray(self, input_point_array):
         self.input_point_array = input_point_array
+        self.feature_dict['empty'] = self.isEmpty()
         return True
 
     def updateFeature(self, feature_name, feature_value):
