@@ -150,17 +150,39 @@ class CropSpace(object):
             crop.updateFeatureDict(func(crop))
         return True
 
-    def getFeatureMask(self, feature_name):
+    def getFeatureArray(self, feature_name):
         assert self.space_size is not None
         assert self.space_idx_list is not None
         assert self.space is not None
 
-        feature_mask = np.zeros(self.space_size, dtype=bool)
+        feature_list = np.zeros(self.space_size).tolist()
+
+        feature_shape = None
         for i, j, k in self.space_idx_list:
-            feature_mask[i][j][k] = self.getCrop(
+            feature = self.getCrop(i, j, k).feature_dict[feature_name]
+            if feature is not None:
+                feature_shape = feature.shape
+                feature = np.array(feature)
+            feature_list[i][j][k] = feature
+
+        if feature_shape is not None:
+            for i, j, k in self.space_idx_list:
+                if feature_list[i][j][k] is not None:
+                    continue
+                feature_list[i][j][k] = np.zeros(feature_shape)
+        return np.array(feature_list)
+
+    def getFeatureMaskArray(self, feature_name):
+        assert self.space_size is not None
+        assert self.space_idx_list is not None
+        assert self.space is not None
+
+        feature_mask_array = np.zeros(self.space_size, dtype=bool)
+        for i, j, k in self.space_idx_list:
+            feature_mask_array[i][j][k] = self.getCrop(
                 i, j, k).feature_dict[feature_name] is not None
-        return feature_mask
+        return feature_mask_array
 
     def getMaskFeatureIdxArray(self, feature_name):
-        feature_mask = self.getFeatureMask(feature_name)
-        return np.dstack(np.where(feature_mask == True))[0]
+        feature_mask_array = self.getFeatureMaskArray(feature_name)
+        return np.dstack(np.where(feature_mask_array == True))[0]
