@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import torch
-import numpy as np
-from tqdm import tqdm
 
 from conv_onet.Config.config import CONFIG
 
@@ -11,7 +9,6 @@ from conv_onet.Data.checkpoint_io import CheckpointIO
 
 from conv_onet.Model.conv_onet import ConvolutionalOccupancyNetwork
 
-from conv_onet.Method.io import export_pointcloud
 from conv_onet.Method.path import createFileFolder
 
 from conv_onet.Module.unit_generator3d import UnitGenerator3D
@@ -55,8 +52,8 @@ class Detector(object):
             'encode')
         return result
 
-    def detectAndSave(self, data, render=False, print_progress=False):
-        modelname = data['model']
+    def detectAndSave(self, point_array, render=False, print_progress=False):
+        modelname = 'test'
 
         save_input_file_path = self.generation_dir + 'input/' + modelname + '.ply'
         save_mesh_file_path = self.generation_dir + 'meshes/' + modelname + '.off'
@@ -64,28 +61,8 @@ class Detector(object):
         createFileFolder(save_input_file_path)
         createFileFolder(save_mesh_file_path)
 
-        assert 'inputs' in data.keys()
-        point_array = data['inputs'].detach().clone().cpu().numpy()
         mesh, stats_dict = self.unit_generator.generate_mesh_sliding(
             point_array, render, print_progress)
 
         mesh.export(save_mesh_file_path)
-
-        inputs = data['inputs'].squeeze(0).cpu().numpy()
-        export_pointcloud(inputs, save_input_file_path, False)
         return True
-
-    def detectPointArray(self,
-                         point_array,
-                         render=False,
-                         print_progress=False):
-        data = {
-            'inputs':
-            torch.tensor(point_array.astype(np.float32)).reshape(1, -1,
-                                                                 3).cuda(),
-            'pointcloud_crop':
-            True,
-            'model':
-            'test',
-        }
-        return self.detect(data, render, print_progress)
