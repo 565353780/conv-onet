@@ -10,7 +10,7 @@ from conv_onet.Module.detector import Detector
 def demo():
 
     #  mesh_file_path = \
-        #  "/home/chli/chLi/ScanNet/objects/scene0000_00/37_bed.ply"
+    #  "/home/chli/chLi/ScanNet/objects/scene0000_00/37_bed.ply"
     #  mesh = o3d.io.read_triangle_mesh(mesh_file_path)
     #  points = np.array(mesh.vertices)
 
@@ -33,8 +33,9 @@ def demo():
     sample_point_idx_array = np.random.choice(point_idx_array,
                                               int(points.shape[0] / 2),
                                               replace=False)
-    sample_points = points[sample_point_idx_array]
+    sample_points = points[sample_point_idx_array].astype(np.float32).reshape(
+        1, -1, 3)
 
     detector = Detector()
-    detector.detectPointArray(sample_points, render, print_progress)
+    detector.detectAndSave(sample_points, render, print_progress)
     return True
