@@ -15,7 +15,7 @@ DATA = {
     'pointcloud_noise': 0.0,
     'padding': 0.1,
     'unit_size': 0.01,  # define the size of a voxel, in meter
-    'query_vol_size': 50,  # query crop in voxel
+    'query_vol_size': 55,  # query crop in voxel
     #  'query_vol_size': 9,  # query crop in voxel
     'points_file': 'points_iou.npz',
     'points_iou_file': 'points_iou.npz',
@@ -44,12 +44,6 @@ TEST = {
 
 GENERATION = {
     'batch_size': 100000,
-    'latent_number': 4,
-    'latent_H': 8,
-    'latent_W': 8,
-    'latent_ny': 2,
-    'latent_nx': 2,
-    'latent_repeat': True,
 }
 
 CONFIG = {
