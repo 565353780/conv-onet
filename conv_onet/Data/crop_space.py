@@ -11,9 +11,15 @@ from conv_onet.Data.crop import Crop
 
 class CropSpace(object):
 
-    def __init__(self, input_crop_size, query_crop_size):
+    def __init__(self,
+                 input_crop_size,
+                 query_crop_size,
+                 lb=UNIT_LB,
+                 ub=UNIT_UB):
         self.input_crop_size = input_crop_size
         self.query_crop_size = query_crop_size
+        self.lb = np.array(lb)
+        self.ub = np.array(ub)
 
         self.space_size = None
         self.space_idx_list = None
@@ -66,18 +72,18 @@ class CropSpace(object):
 
     def createSpace(self):
         self.space_size = np.ceil(
-            (UNIT_UB - UNIT_LB) / self.query_crop_size).astype(int)
+            (self.ub - self.lb) / self.query_crop_size).astype(int)
 
         self.space = np.zeros(self.space_size).tolist()
 
         self.space_idx_list = []
 
         for i in range(self.space_size[0]):
-            min_point_x = UNIT_LB[0] + i * self.query_crop_size
+            min_point_x = self.lb[0] + i * self.query_crop_size
             for j in range(self.space_size[1]):
-                min_point_y = UNIT_LB[1] + j * self.query_crop_size
+                min_point_y = self.lb[1] + j * self.query_crop_size
                 for k in range(self.space_size[2]):
-                    min_point_z = UNIT_LB[2] + k * self.query_crop_size
+                    min_point_z = self.lb[2] + k * self.query_crop_size
 
                     min_point = np.array(
                         [min_point_x, min_point_y, min_point_z])
