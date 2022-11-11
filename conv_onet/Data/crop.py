@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import numpy as np
+
 from conv_onet.Data.point import Point
 from conv_onet.Data.bbox import BBox
 
@@ -38,7 +40,11 @@ class Crop(object):
 
     def updateInputPointArray(self, input_point_array):
         self.input_point_array = input_point_array
-        self.feature_dict['empty'] = self.isEmpty()
+
+        if self.isEmpty():
+            self.feature_dict['valid'] = None
+        else:
+            self.feature_dict['valid'] = np.array([1.0], dtype=float)
         return True
 
     def updateFeature(self, feature_name, feature_value):
