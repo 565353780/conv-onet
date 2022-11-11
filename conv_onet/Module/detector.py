@@ -47,9 +47,9 @@ class Detector(object):
         crop_space = self.unit_generator.crop_space
 
         result['encode'] = crop_space.getFeatureArray('encode')
-        result['mask'] = crop_space.getFeatureMaskArray('encode')
-        result['mask_feature_idx'] = crop_space.getMaskFeatureIdxArray(
-            'encode')
+        result['occ'] = crop_space.getFeatureArray('occ')
+        result['mask'] = crop_space.getFeatureMaskArray('valid')
+        result['mask_feature_idx'] = crop_space.getMaskFeatureIdxArray('valid')
         return result
 
     def detectAndSave(self, point_array, render=False, print_progress=False):
