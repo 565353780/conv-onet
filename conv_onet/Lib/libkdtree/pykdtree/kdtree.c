@@ -7516,7 +7516,7 @@ static PyTypeObject __pyx_type_8pykdtree_6kdtree_KDTree = {
   sizeof(struct __pyx_obj_8pykdtree_6kdtree_KDTree), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_8pykdtree_6kdtree_KDTree, /*tp_dealloc*/
-  0, /*tp_print*/
+  0, /*tp_print->tp_dict*/
   0, /*tp_getattr*/
   0, /*tp_setattr*/
   #if PY_MAJOR_VERSION < 3
@@ -8024,7 +8024,7 @@ static int __pyx_pymod_exec_kdtree(PyObject *__pyx_pyinit_module)
   /*--- Function export code ---*/
   /*--- Type init code ---*/
   if (PyType_Ready(&__pyx_type_8pykdtree_6kdtree_KDTree) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
-  __pyx_type_8pykdtree_6kdtree_KDTree.tp_print = 0;
+  __pyx_type_8pykdtree_6kdtree_KDTree.tp_dict = 0;
   if (PyObject_SetAttrString(__pyx_m, "KDTree", (PyObject *)&__pyx_type_8pykdtree_6kdtree_KDTree) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
   if (__Pyx_setup_reduce((PyObject*)&__pyx_type_8pykdtree_6kdtree_KDTree) < 0) __PYX_ERR(0, 65, __pyx_L1_error)
   __pyx_ptype_8pykdtree_6kdtree_KDTree = &__pyx_type_8pykdtree_6kdtree_KDTree;
