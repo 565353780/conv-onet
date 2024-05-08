@@ -5,10 +5,7 @@ import math
 import torch
 import numpy as np
 
-print('start import kdtree')
-#from conv_onet.Lib.libkdtree.pykdtree.kdtree import KDTree
 from pykdtree.kdtree import KDTree
-print('finish import kdtree')
 
 
 def compute_iou(occ1, occ2):
