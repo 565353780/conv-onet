@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
+import os
 import numpy as np
 import open3d as o3d
 
@@ -8,34 +6,41 @@ from conv_onet.Module.detector import Detector
 
 
 def demo():
-
-    #  mesh_file_path = \
-    #  "/home/chli/chLi/ScanNet/objects/scene0000_00/37_bed.ply"
-    #  mesh = o3d.io.read_triangle_mesh(mesh_file_path)
-    #  points = np.array(mesh.vertices)
-
-    mesh_file_path = \
-        "/home/chli/chLi/ShapeNet/Core/ShapeNetCore.v2/" + \
-        "02691156/" + \
-        "222c0d99446148babe4274edc10c1c8e/" + \
-        "models/model_normalized.obj"
-    mesh = o3d.io.read_triangle_mesh(mesh_file_path)
-    pcd = mesh.sample_points_uniformly(2000000)
-    points = np.array(pcd.points)
+    dataset_folder_path = '/home/chli/chLi/Dataset/SampledPcd/ShapeNet/03001627/'
+    sample_point_num = 2048
+    save_folder_path = '/home/chli/chLi/Dataset/ConvONet_Recon_' + str(sample_point_num) + '/ShapeNet/03001627/'
     render = False
     print_progress = True
 
-    box = pcd.get_axis_aligned_bounding_box()
-    print(box)
-    print(box.get_extent())
-
-    point_idx_array = np.arange(0, points.shape[0])
-    sample_point_idx_array = np.random.choice(point_idx_array,
-                                              int(points.shape[0] / 2),
-                                              replace=False)
-    sample_points = points[sample_point_idx_array].astype(np.float32).reshape(
-        1, -1, 3)
+    os.makedirs(save_folder_path, exist_ok=True)
 
     detector = Detector()
-    detector.detectAndSave(sample_points, render, print_progress)
+
+    solved_shape_names = os.listdir(save_folder_path)
+
+    pcd_filename_list = os.listdir(dataset_folder_path)
+    pcd_filename_list.sort()
+
+    for i, pcd_filename in enumerate(pcd_filename_list):
+        if pcd_filename[-4:] != '.npy':
+            continue
+
+        if pcd_filename in solved_shape_names:
+            continue
+
+        pcd_file_path = dataset_folder_path + pcd_filename
+
+        points = np.load(pcd_file_path)
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points)
+
+        fps_pcd = pcd.farthest_point_down_sample(sample_point_num)
+
+        fps_pts = np.asarray(fps_pcd.points).reshape(1, -1, 3)
+
+        save_mesh_file_path = save_folder_path + pcd_filename.replace('.npy', '.obj')
+
+        detector.detectAndSave(fps_pts, save_mesh_file_path, render, print_progress)
+
+        print('solved shape num:', i + 1)
     return True

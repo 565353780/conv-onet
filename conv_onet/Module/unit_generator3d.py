@@ -89,7 +89,7 @@ class UnitGenerator3D(object):
                           reso=self.vol_bound['reso'])
         index['grid'] = torch.tensor(ind.reshape(1, 1, -1)).to(self.device)
         input_cur = add_key(torch.tensor(p_input.reshape(1, -1,
-                                                         3)).to(self.device),
+                                                         3)).type(torch.float32).to(self.device),
                             index,
                             'points',
                             'index',

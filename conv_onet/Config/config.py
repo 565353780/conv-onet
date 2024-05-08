@@ -39,7 +39,7 @@ TEST = {
     'eval_mesh': True,
     'eval_pointcloud': False,
     'remove_wall': False,
-    'model_file': '/home/chli/chLi/conv-onet/room_grid64.pt',
+    'model_file': './output/room_grid64.pt',
 }
 
 GENERATION = {

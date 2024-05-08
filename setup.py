@@ -19,7 +19,7 @@ mcubes_module = Extension('conv_onet.Lib.libmcubes.mcubes',
                               'conv_onet/Lib/libmcubes/marchingcubes.cpp'
                           ],
                           language='c++',
-                          extra_compile_args=['-std=c++11'],
+                          extra_compile_args=['-std=c++20'],
                           include_dirs=[numpy_include_dir])
 
 # triangle hash (efficient mesh intersection)

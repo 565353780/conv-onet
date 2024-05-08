@@ -52,16 +52,10 @@ class Detector(object):
         result['mask_feature_idx'] = crop_space.getMaskFeatureIdxArray('valid')
         return result
 
-    def detectAndSave(self, point_array, render=False, print_progress=False):
-        modelname = 'test'
-
-        save_input_file_path = self.generation_dir + 'input/' + modelname + '.ply'
-        save_mesh_file_path = self.generation_dir + 'meshes/' + modelname + '.off'
-
-        createFileFolder(save_input_file_path)
+    def detectAndSave(self, point_array, save_mesh_file_path, render=False, print_progress=False):
         createFileFolder(save_mesh_file_path)
 
-        mesh, stats_dict = self.unit_generator.generate_mesh_sliding(
+        mesh, _ = self.unit_generator.generate_mesh_sliding(
             point_array, render, print_progress)
 
         mesh.export(save_mesh_file_path)
