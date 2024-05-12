@@ -1,4 +1,5 @@
 # compiled
+__pycache__
 build
 conv_onet/Lib/libmcubes/mcubes.cpp
 conv_onet/Lib/libsimplify/simplify_mesh.cpp

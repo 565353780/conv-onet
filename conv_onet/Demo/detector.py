@@ -6,9 +6,9 @@ from conv_onet.Module.detector import Detector
 
 
 def demo():
-    dataset_folder_path = '/home/chli/chLi/Dataset/SampledPcd/ShapeNet/03001627/'
-    sample_point_num = 2048
-    save_folder_path = '/home/chli/chLi/Dataset/ConvONet_Recon_' + str(sample_point_num) + '/ShapeNet/03001627/'
+    dataset_folder_path = '/home/chli/chLi/Dataset/SampledPcd_Manifold/ShapeNet/03001627/'
+    sample_point_num = 4000
+    save_folder_path = '/home/chli/chLi/Dataset/ConvONet_Manifold_Recon_' + str(sample_point_num) + '/ShapeNet/03001627/'
     render = False
     print_progress = True
 
