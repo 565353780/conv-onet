@@ -12,7 +12,6 @@ def demo():
     detector = Detector()
 
     first_solve_list = ['03001627', '02691156']
-    first_solve_list = ['03001627']
     for category_id in first_solve_list:
         compare_folder_path = '../ma-sh/output/metric_manifold_result_selected/ShapeNet/' + category_id + '/'
 
