@@ -1,5 +1,7 @@
 pip install -U cython imageio numpy pandas pillow pyembree pytest pyyaml \
-  scikit-image scipy tensorboardx tqdm trimesh h5py plyfile open3d pykdtree
+  scikit-image scipy tensorboardx tqdm trimesh h5py plyfile open3d
+
+pip install -U pykdtree==1.3.7
 
 pip install -U torch torchvision torchaudio
 
